@@ -29,12 +29,13 @@ import {
  * 5. Copy the configuration object and paste it below:
  */
 export const firebaseConfig = {
-  apiKey: "AIzaSyREPLACE_WITH_YOUR_FIREBASE_API_KEY",
+  apiKey: "AIzaSyDrlk9x80OoZwMA96ZiJ8gywcP3uXnbEdY",
   authDomain: "country-school-shahjamal.firebaseapp.com",
   projectId: "country-school-shahjamal",
-  storageBucket: "country-school-shahjamal.appspot.com",
-  messagingSenderId: "123456789012",
-  appId: "1:123456789012:web:abcdef1234567890abcdef"
+  storageBucket: "country-school-shahjamal.firebasestorage.app",
+  messagingSenderId: "735993190409",
+  appId: "1:735993190409:web:5309ee85e27511f0d800d8",
+  measurementId: "G-NNY67S5DJX"
 };
 
 /**
