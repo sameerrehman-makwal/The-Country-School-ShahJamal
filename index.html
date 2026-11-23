@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Country School ShahJamal — Attendance Management System</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./css/custom.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- =====================================================================
+       TOP APP HEADER
+       ===================================================================== -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <!-- School Identity & Crest -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-800 flex items-center justify-center text-white shadow-md shadow-indigo-100 flex-shrink-0">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="font-extrabold text-base sm:text-lg text-slate-900 leading-tight">The Country School</h1>
+          <p class="text-xs font-semibold text-indigo-600 tracking-wide uppercase">ShahJamal Campus • Attendance</p>
+        </div>
+      </div>
+
+      <!-- Network Badge & User Profile Controls -->
+      <div class="flex items-center gap-3">
+        <div id="network-status-badge" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>Online</span>
+        </div>
+
+        <div id="user-header-profile" class="hidden items-center gap-2.5 pl-2 border-l border-slate-200">
+          <div class="hidden sm:block text-right">
+            <div id="header-user-name" class="text-xs font-bold text-slate-900 leading-tight">Admin User</div>
+            <div id="header-user-role" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 inline-block mt-0.5">Admin</div>
+          </div>
+          <button id="btn-logout" title="Sign Out" class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- =====================================================================
+       FIREBASE CONFIG WARNING BANNER
+       ===================================================================== -->
+  <div id="firebase-config-warning" class="hidden bg-amber-500 text-white px-4 py-3 text-xs sm:text-sm font-semibold text-center shadow-inner">
+    ⚠️ <span class="font-bold">Configuration Notice:</span> Firebase credentials are currently set to placeholders in 
+    <code class="bg-amber-600 px-2 py-0.5 rounded font-mono text-xs">js/firebase-config.js</code>. 
+    Please paste your Firebase project keys to enable real-time cloud sync.
+  </div>
+
+  <!-- Loading State Overlay -->
+  <div id="app-loading" class="fixed inset-0 bg-white/80 backdrop-blur-xs flex items-center justify-center z-50">
+    <div class="text-center">
+      <div class="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-3"></div>
+      <p class="text-sm font-bold text-slate-700">Connecting to Attendance System...</p>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       MAIN CONTAINER
+       ===================================================================== -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+
+    <!-- -------------------------------------------------------------------
+         VIEW: LOGIN SCREEN
+         ------------------------------------------------------------------- -->
+    <section id="view-login" class="max-w-md mx-auto my-12">
+      <div class="bg-white rounded-3xl p-8 border border-slate-200 shadow-xl shadow-slate-200/50">
+        <div class="text-center mb-8">
+          <div class="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mx-auto mb-4">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+            </svg>
+          </div>
+          <h2 class="text-2xl font-black text-slate-900 tracking-tight">Staff & Parent Portal</h2>
+          <p class="text-xs text-slate-500 mt-1">Students, Parents, Teachers & Administrators</p>
+        </div>
+
+        <form id="login-form" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="login-email">Student ID / Staff Email</label>
+            <input type="text" id="login-email" required placeholder="e.g. 1001 or staff@countryschool.edu"
+                   class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-sm font-medium transition">
+            <p class="text-[11px] text-slate-400 mt-1.5">
+              💡 <strong>Parents:</strong> Enter your child's Roll/Student ID (e.g. <strong class="text-slate-600">1001</strong>). 
+              <strong>Staff:</strong> Enter your school email.
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="login-password">Password</label>
+            <input type="password" id="login-password" required placeholder="••••••••"
+                   class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-sm font-medium transition">
+          </div>
+
+          <button type="submit" id="btn-login-submit"
+                  class="w-full py-3.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md shadow-indigo-100 transition active:scale-[0.99]">
+            Sign In to Portal
+          </button>
+        </form>
+
+        <div class="mt-6 pt-6 border-t border-slate-100 text-center text-xs text-slate-400">
+          Powered by Firebase Spark Tier & GitHub Pages • Zero Hosting Costs
+        </div>
+      </div>
+
+      <!-- First-Time Admin Setup Bootstrap Card -->
+      <div id="bootstrap-admin-card" class="hidden mt-6 bg-purple-50 border border-purple-200 rounded-3xl p-6 text-purple-950">
+        <div class="flex items-center gap-2 mb-2 font-black text-sm text-purple-900">
+          <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+          Fresh Setup Detected: Initialize First Administrator
+        </div>
+        <p class="text-xs text-purple-800 leading-relaxed mb-4">
+          You are signed in as <span id="bootstrap-user-email" class="font-bold underline"></span>. 
+          No existing admin was found in Firestore. Initialize this account as the Master School Administrator:
+        </p>
+        <div class="space-y-3">
+          <input type="text" id="bootstrap-name" placeholder="Full Administrator Name (e.g. Principal / IT In-charge)" 
+                 class="w-full px-3.5 py-2.5 rounded-xl border border-purple-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-purple-300">
+          <button id="btn-bootstrap-admin" 
+                  class="w-full py-2.5 px-4 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs shadow-sm transition">
+            Initialize Master Administrator Profile
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- -------------------------------------------------------------------
+         VIEW: TEACHER PORTAL (Mobile-First Touch Roll-Call & Marks Entry)
+         ------------------------------------------------------------------- -->
+    <section id="view-teacher" class="hidden space-y-6">
+
+      <!-- Teacher Navigation Subtabs -->
+      <div class="flex items-center gap-2 p-1.5 bg-white rounded-2xl border border-slate-200 shadow-xs">
+        <button id="btn-teacher-tab-attendance" type="button" class="px-4 py-2 text-xs font-bold rounded-xl bg-indigo-600 text-white shadow-sm transition">
+          Daily Attendance Roll Call
+        </button>
+        <button id="btn-teacher-tab-marks" type="button" class="px-4 py-2 text-xs font-bold rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+          Exam Marks Entry
+        </button>
+      </div>
+
+      <!-- Empty State if no classes assigned -->
+      <div id="teacher-no-classes" class="hidden p-12 text-center bg-white rounded-3xl border border-slate-200 shadow-sm max-w-lg mx-auto">
+        <div class="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        </div>
+        <h3 class="text-lg font-bold text-slate-800">No Classes Assigned</h3>
+        <p class="text-xs text-slate-500 mt-2">Your teacher account does not have any classes linked yet. Please notify the School Administrator to assign your classes.</p>
+      </div>
+
+      <!-- SUBSECTION 1: ATTENDANCE ROLL CALL -->
+      <div id="teacher-section-attendance" class="space-y-5">
+        
+        <!-- Controls Bar: Class Select, Date, Quick Mark -->
+        <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <!-- Class Selector -->
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1" for="teacher-class-select">Select Class</label>
+              <select id="teacher-class-select" class="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm font-bold focus:ring-2 focus:ring-indigo-100 outline-none">
+                <!-- Dynamically populated with assigned classes only -->
+              </select>
+            </div>
+
+            <!-- Date Picker -->
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1" for="teacher-date-input">Attendance Date</label>
+              <input type="date" id="teacher-date-input" class="w-full sm:w-auto px-4 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm font-bold focus:ring-2 focus:ring-indigo-100 outline-none">
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex items-center gap-2">
+            <button id="btn-mark-all-present" type="button"
+                    class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition active:scale-95 flex items-center justify-center gap-1.5">
+              <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              Mark All Present
+            </button>
+            <button id="btn-save-attendance" type="button"
+                    class="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-100 transition active:scale-95 flex items-center justify-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+              Save Attendance
+            </button>
+          </div>
+        </div>
+
+        <!-- Anti-Tampering Notice Banner -->
+        <div id="teacher-lock-banner" class="hidden p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+          <!-- Populated dynamically if viewing past date -->
+        </div>
+
+        <!-- Live Status Pill Counters -->
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-500">Total Enrolled</span>
+            <span id="teacher-stat-total" class="font-extrabold text-lg text-slate-900">0</span>
+          </div>
+          <div class="bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-100 shadow-xs flex items-center justify-between">
+            <span class="text-xs font-semibold text-emerald-800">Present (P)</span>
+            <span id="teacher-stat-present" class="font-extrabold text-lg text-emerald-600">0</span>
+          </div>
+          <div class="bg-rose-50/60 p-3.5 rounded-2xl border border-rose-100 shadow-xs flex items-center justify-between">
+            <span class="text-xs font-semibold text-rose-800">Absent (A)</span>
+            <span id="teacher-stat-absent" class="font-extrabold text-lg text-rose-600">0</span>
+          </div>
+          <div class="bg-amber-50/60 p-3.5 rounded-2xl border border-amber-100 shadow-xs flex items-center justify-between">
+            <span class="text-xs font-semibold text-amber-800">Late (L)</span>
+            <span id="teacher-stat-late" class="font-extrabold text-lg text-amber-600">0</span>
+          </div>
+          <div class="bg-blue-50/60 p-3.5 rounded-2xl border border-blue-100 shadow-xs flex items-center justify-between col-span-2 sm:col-span-1">
+            <span class="text-xs font-semibold text-blue-800">Excused (E)</span>
+            <span id="teacher-stat-excused" class="font-extrabold text-lg text-blue-600">0</span>
+          </div>
+        </div>
+
+        <!-- Student Attendance List Cards -->
+        <div id="teacher-student-list" class="space-y-3">
+          <!-- Populated dynamically -->
+        </div>
+
+      </div>
+
+      <!-- SUBSECTION 2: EXAM MARKS ENTRY -->
+      <div id="teacher-section-marks" class="hidden space-y-5">
+        <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1" for="teacher-marks-term-select">Select Exam Term</label>
+              <select id="teacher-marks-term-select" class="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm font-bold focus:ring-2 focus:ring-indigo-100 outline-none">
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1" for="teacher-marks-class-select">Select Assigned Class</label>
+              <select id="teacher-marks-class-select" class="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm font-bold focus:ring-2 focus:ring-indigo-100 outline-none">
+              </select>
+            </div>
+          </div>
+          <button id="btn-save-marks" type="button"
+                  class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-100 transition active:scale-95 flex items-center justify-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+            Save All Marks
+          </button>
+        </div>
+
+        <div id="teacher-marks-lock-banner" class="hidden"></div>
+        <div id="teacher-marks-table-container"></div>
+      </div>
+
+    </section>
+
+    <!-- -------------------------------------------------------------------
+         VIEW: ADMIN DASHBOARD
+         ------------------------------------------------------------------- -->
+    <section id="view-admin" class="hidden space-y-6">
+
+      <!-- Navigation Tabs -->
+      <nav class="flex flex-wrap gap-2 p-1.5 bg-white rounded-2xl border border-slate-200 shadow-xs">
+        <button data-tab="overview" class="admin-nav-tab px-4 py-2 text-sm font-semibold rounded-xl bg-indigo-600 text-white shadow-sm transition">
+          Daily Overview
+        </button>
+        <button data-tab="classes" class="admin-nav-tab px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+          Classes
+        </button>
+        <button data-tab="students" class="admin-nav-tab px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+          Students & CSV Import
+        </button>
+        <button data-tab="teachers" class="admin-nav-tab px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+          Teacher Profiles
+        </button>
+        <button data-tab="reports" class="admin-nav-tab px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+          Monthly Reports & Radar
+        </button>
+        <button data-tab="exams" class="admin-nav-tab px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+          Exam Terms & Subjects
+        </button>
+        <button data-tab="parents" class="admin-nav-tab px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+          Parent Accounts
+        </button>
+      </nav>
+
+      <!-- TAB 1: DAILY OVERVIEW & OVERRIDE -->
+      <div id="admin-tab-overview" class="admin-tab-content space-y-6">
+        <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1" for="admin-overview-date">Choose Date</label>
+              <input type="date" id="admin-overview-date" class="px-4 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm font-bold focus:ring-2 focus:ring-indigo-100 outline-none">
+            </div>
+            <button id="btn-refresh-overview" class="mt-4 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition" title="Refresh">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            </button>
+          </div>
+
+          <!-- School-Wide KPI Cards -->
+          <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+            <div class="px-4 py-2 rounded-2xl bg-indigo-50 border border-indigo-100 text-center flex-1 sm:flex-none">
+              <span class="block text-[10px] uppercase font-bold text-indigo-500">School Attendance</span>
+              <span id="admin-stat-overall-rate" class="font-extrabold text-base text-indigo-900">0%</span>
+            </div>
+            <div class="px-4 py-2 rounded-2xl bg-emerald-50 border border-emerald-100 text-center flex-1 sm:flex-none">
+              <span class="block text-[10px] uppercase font-bold text-emerald-600">Present</span>
+              <span id="admin-stat-school-present" class="font-extrabold text-base text-emerald-700">0</span>
+            </div>
+            <div class="px-4 py-2 rounded-2xl bg-rose-50 border border-rose-100 text-center flex-1 sm:flex-none">
+              <span class="block text-[10px] uppercase font-bold text-rose-600">Absent</span>
+              <span id="admin-stat-school-absent" class="font-extrabold text-base text-rose-700">0</span>
+            </div>
+            <div class="px-4 py-2 rounded-2xl bg-slate-50 border border-slate-200 text-center flex-1 sm:flex-none">
+              <span class="block text-[10px] uppercase font-bold text-slate-500">Classes Marked</span>
+              <span id="admin-stat-marked-classes" class="font-extrabold text-base text-slate-800">0 / 0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Class Attendance Matrix Grid -->
+        <div id="admin-overview-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- TAB 2: CLASS MANAGEMENT -->
+      <div id="admin-tab-classes" class="admin-tab-content hidden space-y-6">
+        <!-- Add Class Form -->
+        <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs">
+          <h3 class="text-base font-bold text-slate-900 mb-4">Register New Class / Section</h3>
+          <form id="form-add-class" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1" for="class-name">Class Display Name</label>
+              <input type="text" id="class-name" required placeholder="e.g. Grade 10 - Section A"
+                     class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1" for="class-grade">Grade / Year</label>
+              <input type="text" id="class-grade" required placeholder="e.g. 10"
+                     class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1" for="class-section">Section</label>
+              <input type="text" id="class-section" required placeholder="e.g. A"
+                     class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1" for="class-academic-year">Academic Year</label>
+              <input type="text" id="class-academic-year" value="2026-2027" placeholder="e.g. 2026-2027"
+                     class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
+            </div>
+            <div>
+              <button type="submit" class="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition">
+                + Create Class
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Classes Table -->
+        <div class="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <tr>
+                <th class="px-6 py-3.5">Class Name</th>
+                <th class="px-6 py-3.5">Grade</th>
+                <th class="px-6 py-3.5">Section</th>
+                <th class="px-6 py-3.5">Students</th>
+                <th class="px-6 py-3.5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="table-classes-body">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 3: STUDENT MANAGEMENT & CSV IMPORTER -->
+      <div id="admin-tab-students" class="admin-tab-content hidden space-y-6">
+        
+        <!-- Filter Bar & Bulk Actions -->
+        <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <label class="text-xs font-bold text-slate-700 whitespace-nowrap" for="admin-student-class-filter">Filter Class:</label>
+            <select id="admin-student-class-filter" class="px-4 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-xs font-bold focus:ring-2 focus:ring-indigo-100 outline-none">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+          <div class="text-xs text-slate-400">
+            Scoped queries guarantee zero-cost reads (max 30-40 per class)
+          </div>
+        </div>
+
+        <!-- Add Single Student Accordion / Form -->
+        <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs">
+          <h3 class="text-sm font-bold text-slate-900 mb-4">+ Add Individual Student</h3>
+          <form id="form-add-student" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1" for="student-add-class">Class</label>
+              <select id="student-add-class" required class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1" for="student-roll">Roll No</label>
+              <input type="text" id="student-roll" required placeholder="e.g. 101"
+                     class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1" for="student-name">Student Name</label>
+              <input type="text" id="student-name" required placeholder="Full Name"
+                     class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1" for="student-father">Father / Guardian</label>
+              <input type="text" id="student-father" placeholder="Father Name"
+                     class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1" for="student-phone">WhatsApp Phone</label>
+              <input type="text" id="student-phone" placeholder="03001234567"
+                     class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
+            </div>
+            <div>
+              <input type="hidden" id="student-gender" value="Unspecified">
+              <button type="submit" class="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition">
+                Save Student
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Bulk CSV Importer Card -->
+        <div class="bg-indigo-50/50 rounded-3xl p-6 border border-indigo-100 shadow-xs">
+          <div class="flex items-center gap-2 mb-2 font-bold text-sm text-indigo-950">
+            <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+            Bulk Student CSV Importer (Upload Entire Classes at Once)
+          </div>
+          <p class="text-xs text-indigo-900/80 mb-4 leading-relaxed">
+            Upload a CSV file containing columns: <code class="font-bold bg-white/70 px-1.5 py-0.5 rounded text-indigo-800">RollNo, Name, FatherName, ParentPhone, Gender</code>. 
+            The system batches records in groups of 400 to safely stay well within Firestore limits.
+          </p>
+
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <select id="csv-target-class" class="px-3.5 py-2 rounded-xl border border-indigo-200 bg-white text-slate-800 text-xs font-bold focus:ring-2 focus:ring-indigo-200 outline-none">
+              <!-- Populated dynamically -->
+            </select>
+            <input type="file" id="csv-file-input" accept=".csv"
+                   class="file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 text-xs text-slate-600 cursor-pointer">
+          </div>
+
+          <!-- CSV Preview Table Container -->
+          <div id="csv-preview-container" class="hidden mt-4 bg-white rounded-2xl p-4 border border-indigo-100">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-slate-800">Previewing <span id="csv-preview-count">0</span> Students Ready to Import:</span>
+              <button id="btn-confirm-csv-import" class="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition">
+                Confirm & Import to Firestore
+              </button>
+            </div>
+            <div class="max-h-48 overflow-y-auto">
+              <table class="w-full text-left">
+                <thead class="bg-slate-50 text-[10px] font-bold text-slate-500 uppercase">
+                  <tr>
+                    <th class="px-3 py-1.5">Roll</th>
+                    <th class="px-3 py-1.5">Name</th>
+                    <th class="px-3 py-1.5">Father</th>
+                    <th class="px-3 py-1.5">Phone</th>
+                    <th class="px-3 py-1.5">Gender</th>
+                  </tr>
+                </thead>
+                <tbody id="csv-preview-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filtered Students Table -->
+        <div class="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <tr>
+                <th class="px-6 py-3.5">Roll No</th>
+                <th class="px-6 py-3.5">Student Name</th>
+                <th class="px-6 py-3.5">Father / Guardian</th>
+                <th class="px-6 py-3.5">Parent WhatsApp</th>
+                <th class="px-6 py-3.5">Gender</th>
+                <th class="px-6 py-3.5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="table-students-body">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+      <!-- TAB 4: TEACHER PROFILES & CLASS ASSIGNMENTS -->
+      <div id="admin-tab-teachers" class="admin-tab-content hidden space-y-6">
+        <!-- Add Teacher Profile Form -->
+        <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs">
+          <h3 class="text-sm font-bold text-slate-900 mb-4">Register New Teacher Profile</h3>
+          <form id="form-add-teacher" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1" for="teacher-name">Full Name</label>
+                <input type="text" id="teacher-name" required placeholder="e.g. Ms. Fatima Khan"
+                       class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1" for="teacher-email">Staff Email (Login ID)</label>
+                <input type="email" id="teacher-email" required placeholder="teacher@countryschool.edu"
+                       class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1" for="teacher-uid">Firebase Auth UID</label>
+                <input type="text" id="teacher-uid" required placeholder="From Firebase Console > Users"
+                       class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none font-mono">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1" for="teacher-phone">Contact Phone</label>
+                <input type="text" id="teacher-phone" placeholder="03001234567"
+                       class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-400">💡 <strong>Quick Step:</strong> First create the teacher in Firebase Console > Authentication > Users, then paste their <strong>User UID</strong> above.</p>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1.5">Assign Classes to this Teacher:</label>
+              <div id="teacher-class-checkboxes" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+                <!-- Checkboxes populated dynamically -->
+              </div>
+            </div>
+
+            <button type="submit" class="py-2.5 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition">
+              + Save Teacher Profile
+            </button>
+          </form>
+        </div>
+
+        <!-- Teachers List -->
+        <div id="teachers-list-container" class="space-y-3">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- TAB 5: MONTHLY REPORTS & ATTENDANCE RADAR -->
+      <div id="admin-tab-reports" class="admin-tab-content hidden space-y-6">
+        
+        <!-- Filter Controls -->
+        <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 print:hidden">
+          <div class="flex flex-wrap items-center gap-3">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1" for="report-class-select">Select Class</label>
+              <select id="report-class-select" class="px-4 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-xs font-bold focus:ring-2 focus:ring-indigo-100 outline-none">
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1" for="report-month-select">Select Month</label>
+              <input type="month" id="report-month-select" class="px-4 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-xs font-bold focus:ring-2 focus:ring-indigo-100 outline-none">
+            </div>
+            <button id="btn-generate-report" class="mt-4 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition">
+              Generate Register
+            </button>
+          </div>
+        </div>
+
+        <!-- Report Results Display Container -->
+        <div id="report-results-container" class="space-y-6">
+          <div class="p-12 text-center text-slate-400 bg-white rounded-3xl border border-slate-200">
+            Select a Class and Month above, then click "Generate Register" to calculate attendance percentages and review the low-attendance radar.
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TAB 6: EXAM TERMS & SUBJECTS CONFIG -->
+      <div id="admin-tab-exams" class="admin-tab-content hidden space-y-6">
+        <!-- Add Exam Term Form -->
+        <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs">
+          <h3 class="text-sm font-bold text-slate-900 mb-4">Create New Examination Session</h3>
+          <form id="form-add-term" class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1" for="term-name">Term Name</label>
+              <input type="text" id="term-name" required placeholder="e.g. Mid-Term Examination 2026"
+                     class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1" for="term-academic-year">Academic Year</label>
+              <input type="text" id="term-academic-year" value="2026-2027" placeholder="e.g. 2026-2027"
+                     class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
+            </div>
+            <div>
+              <button type="submit" class="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition">
+                + Create Exam Term (Draft)
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Exam Terms Table -->
+        <div class="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <tr>
+                <th class="px-6 py-3.5">Term Name</th>
+                <th class="px-6 py-3.5">Academic Year</th>
+                <th class="px-6 py-3.5">Status</th>
+                <th class="px-6 py-3.5">Term ID</th>
+                <th class="px-6 py-3.5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="table-terms-body"></tbody>
+          </table>
+        </div>
+
+        <!-- Class Subjects Configuration Card -->
+        <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Class Subjects Curriculum & Max Marks</h3>
+              <p class="text-xs text-slate-400">Configure subjects and grading parameters per class</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-xs font-bold text-slate-600" for="config-subject-class">Class:</label>
+              <select id="config-subject-class" class="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold outline-none bg-slate-50"></select>
+            </div>
+          </div>
+
+          <form id="form-save-class-subjects" class="space-y-3">
+            <div id="class-subjects-list" class="space-y-2"></div>
+            <div class="flex items-center justify-between pt-2">
+              <button type="button" onclick="window.addSubjectRow()" class="px-3 py-1.5 rounded-xl border border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-xs font-bold transition">
+                + Add Subject
+              </button>
+              <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition">
+                Save Class Subjects
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- TAB 7: PARENT ACCOUNTS -->
+      <div id="admin-tab-parents" class="admin-tab-content hidden space-y-6">
+        <!-- Add Parent Account Form -->
+        <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs">
+          <h3 class="text-sm font-bold text-slate-900 mb-4">Register New Parent Account</h3>
+          <form id="form-add-parent" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1" for="parent-name">Parent Full Name</label>
+                <input type="text" id="parent-name" required placeholder="e.g. Mr. Tariq Mahmood"
+                       class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1" for="parent-login-id">Parent / Student ID</label>
+                <input type="text" id="parent-login-id" required placeholder="e.g. 1001 or P-1001"
+                       class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1" for="parent-uid">Firebase Auth UID</label>
+                <input type="text" id="parent-uid" required placeholder="From Firebase Console > Users"
+                       class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none font-mono">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1" for="parent-phone">Parent Phone</label>
+                <input type="text" id="parent-phone" placeholder="03001234567"
+                       class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
+              </div>
+            </div>
+
+            <!-- Student Selection for Linking -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <label class="text-xs font-bold text-slate-700">Select Children to Link to this Account:</label>
+                <select id="parent-link-class-filter" class="px-2.5 py-1 text-xs border border-slate-200 rounded-lg bg-slate-50 outline-none"></select>
+              </div>
+              <div id="parent-student-checkboxes" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-2 bg-slate-50/50 rounded-2xl border border-slate-200">
+                <!-- Checkboxes populated dynamically -->
+              </div>
+            </div>
+
+            <button type="submit" class="py-2.5 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition">
+              + Save Parent Account
+            </button>
+          </form>
+        </div>
+
+        <!-- Parents List -->
+        <div id="parents-list-container" class="space-y-3"></div>
+      </div>
+
+    </section>
+
+    <!-- -------------------------------------------------------------------
+         VIEW: PARENT PORTAL (Mobile-Friendly Dashboard & Report Cards)
+         ------------------------------------------------------------------- -->
+    <section id="view-parent" class="hidden space-y-6">
+
+      <!-- Empty State if no children linked -->
+      <div id="parent-no-children" class="hidden p-12 text-center bg-white rounded-3xl border border-slate-200 shadow-sm max-w-lg mx-auto">
+        <div class="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        </div>
+        <h3 class="text-lg font-bold text-slate-800">No Student Records Linked</h3>
+        <p class="text-xs text-slate-500 mt-2">Your parent account is registered, but no student records have been linked yet. Please notify the School Administration.</p>
+      </div>
+
+      <!-- Main Section -->
+      <div id="parent-main-section" class="space-y-6">
+
+        <!-- Sibling Switcher Tabs (Only if multiple children) -->
+        <div id="parent-child-switcher" class="hidden bg-white p-3 rounded-2xl border border-slate-200 shadow-xs"></div>
+
+        <!-- Student Metadata & Attendance Overview -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <!-- Student Profile Card -->
+          <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs flex flex-col justify-between">
+            <div>
+              <div class="flex items-center gap-3 mb-4">
+                <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center font-black text-lg">
+                  🎓
+                </div>
+                <div>
+                  <h3 id="parent-child-name" class="font-black text-lg text-slate-900 leading-tight">Student Name</h3>
+                  <p class="text-xs text-slate-500 font-medium">Roll No: <span id="parent-child-roll" class="font-bold text-slate-700">1001</span></p>
+                </div>
+              </div>
+              <div class="space-y-2 text-xs border-t border-slate-100 pt-3">
+                <div class="flex justify-between"><span class="text-slate-400">Class:</span> <span id="parent-child-class" class="font-bold text-slate-800">Grade 10 - A</span></div>
+                <div class="flex justify-between"><span class="text-slate-400">Father/Guardian:</span> <span id="parent-child-father" class="font-bold text-slate-800">Tariq Mahmood</span></div>
+              </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400">
+              The Country School ShahJamal Campus
+            </div>
+          </div>
+
+          <!-- Attendance Performance Card -->
+          <div class="md:col-span-2 bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h4 class="font-black text-base text-slate-900">Attendance Summary</h4>
+                <p class="text-xs text-slate-500">Academic Year Cumulative Attendance</p>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] uppercase font-bold text-slate-400 block">Attendance Rate</span>
+                <span id="parent-att-percent" class="font-black text-xl text-indigo-600">0%</span>
+              </div>
+            </div>
+
+            <div id="parent-att-warning" class="hidden"></div>
+
+            <div class="grid grid-cols-4 gap-2 text-center">
+              <div class="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                <span class="block text-[10px] font-bold uppercase text-slate-400">Working Days</span>
+                <span id="parent-att-total" class="font-black text-base text-slate-800">0</span>
+              </div>
+              <div class="p-3 rounded-2xl bg-emerald-50 border border-emerald-100">
+                <span class="block text-[10px] font-bold uppercase text-emerald-600">Present (P)</span>
+                <span id="parent-att-present" class="font-black text-base text-emerald-700">0</span>
+              </div>
+              <div class="p-3 rounded-2xl bg-rose-50 border border-rose-100">
+                <span class="block text-[10px] font-bold uppercase text-rose-600">Absent (A)</span>
+                <span id="parent-att-absent" class="font-black text-base text-rose-700">0</span>
+              </div>
+              <div class="p-3 rounded-2xl bg-amber-50 border border-amber-100">
+                <span class="block text-[10px] font-bold uppercase text-amber-600">Late (L)</span>
+                <span id="parent-att-late" class="font-black text-base text-amber-700">0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Examination Report Cards Section -->
+        <div class="space-y-4">
+          <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 print:hidden">
+            <div class="flex items-center gap-3">
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1" for="parent-term-select">Examination Session</label>
+                <select id="parent-term-select" class="px-4 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-xs font-bold focus:ring-2 focus:ring-indigo-100 outline-none">
+                </select>
+              </div>
+            </div>
+            <button id="btn-print-parent-report" type="button"
+                    class="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-sm transition inline-flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+              Print / Save PDF Report Card
+            </button>
+          </div>
+
+          <!-- Report Card Render Container -->
+          <div id="parent-report-card-container"></div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- =====================================================================
+       ADMIN ATTENDANCE OVERRIDE MODAL
+       ===================================================================== -->
+  <div id="modal-admin-attendance" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-200">
+      <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+        <div>
+          <h3 id="modal-admin-attendance-title" class="font-bold text-base text-slate-900">Class Attendance Override</h3>
+          <p class="text-xs text-indigo-600 font-semibold">Administrator Master Edit</p>
+        </div>
+        <button onclick="document.getElementById('modal-admin-attendance').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div id="modal-admin-attendance-body">
+        <!-- Form injected dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container Root -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+  <!-- =====================================================================
+       APPLICATION SCRIPT ENTRY POINT
+       ===================================================================== -->
+  <script type="module">
+    import { initAuth } from './js/auth.js';
+    import { initTeacherPortal } from './js/teacher.js';
+    import { initAdminPortal } from './js/admin.js';
+    import { initParentPortal } from './js/parent.js';
+    import { initNetworkMonitor } from './js/firebase-config.js';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // 1. Initialize Network Monitor
+      initNetworkMonitor((isOnline) => {
+        const badge = document.getElementById('network-status-badge');
+        if (badge) {
+          if (isOnline) {
+            badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Online`;
+            badge.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200";
+          } else {
+            badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500"></span> Offline (IndexedDB Active)`;
+            badge.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200";
+          }
+        }
+      });
+
+      // 2. Initialize Authentication & Role Routing
+      initAuth((user) => {
+        if (user.role === 'admin') {
+          initAdminPortal(user);
+        } else if (user.role === 'teacher') {
+          initTeacherPortal(user);
+        } else if (user.role === 'parent') {
+          initParentPortal(user);
+        }
+      });
+    });
+  </script>
+</body>
+</html>

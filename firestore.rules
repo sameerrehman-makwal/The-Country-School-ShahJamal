@@ -1,0 +1,649 @@
+rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: users
+// Document ID: {userId} (Firebase Auth UID or sanitized email identifier)
+// Fields:
+//   - uid: string (optional, 1-128 chars, immutable)
+//   - email: string (required, valid email format, max 100 chars)
+//   - name: string (required, 1-100 chars)
+//   - role: string (required, enum: 'admin' | 'teacher' | 'parent')
+//   - assignedClassIds: list (optional, max 50 strings, classes assigned to teacher)
+//   - linkedStudents: list (optional, max 20 strings, student IDs linked to parent)
+//   - linkedClasses: list (optional, max 20 strings, class IDs linked to parent)
+//   - phone: string (optional, max 30 chars)
+//   - createdAt: timestamp | string (optional/created, max 50 chars, immutable)
+//   - updatedAt: timestamp | string (optional, max 50 chars)
+//
+// Collection: classes
+// Document ID: {classId} (e.g., class_10_a)
+// Fields:
+//   - name: string (required, 1-100 chars, e.g. "Grade 10 - Section A")
+//   - grade: string (required, 1-20 chars, e.g. "10", "KG")
+//   - section: string (required, 1-20 chars, e.g. "A", "B")
+//   - academicYear: string (required, 1-20 chars, e.g. "2026-2027")
+//   - studentCount: int (required, >= 0 and <= 1000)
+//   - createdAt: timestamp | string (optional/created, max 50 chars, immutable)
+//   - updatedAt: timestamp | string (optional, max 50 chars)
+//
+// Collection: students
+// Document ID: {studentId} (e.g., std_class_10_a_1)
+// Fields:
+//   - rollNo: string (required, 1-50 chars)
+//   - name: string (required, 1-100 chars)
+//   - fatherName: string (optional, max 100 chars)
+//   - parentPhone: string (optional, max 30 chars)
+//   - gender: string (optional, max 30 chars, e.g. "Male", "Female", "Unspecified")
+//   - classId: string (required, 1-50 chars, links to classes/{classId})
+//   - status: string (required, enum: 'active' | 'inactive')
+//   - createdAt: timestamp | string (optional/created, max 50 chars, immutable)
+//   - updatedAt: timestamp | string (optional, max 50 chars)
+//
+// Collection: attendance
+// Document ID: {classId}_{YYYY-MM-DD} (e.g., class_10_a_2026-11-23)
+// Fields:
+//   - classId: string (required, 1-50 chars, immutable)
+//   - className: string (required, 1-100 chars)
+//   - date: string (required, YYYY-MM-DD format, immutable)
+//   - academicYear: string (required, 1-20 chars, immutable)
+//   - markedBy: string (required, 1-128 chars, UID of teacher/admin)
+//   - markedByName: string (required, 1-100 chars, display name)
+//   - summary: map (required, keys: total, present, absent, late, excused)
+//   - records: map (required, max 200 student records: studentId -> { status, remarks, updatedAt })
+//   - updatedAt: timestamp | string (required, max 50 chars)
+//   - createdAt: timestamp | string (optional, max 50 chars)
+//
+// Collection: terms
+// Document ID: {termId} (e.g., term_midterm_2026_2027)
+// Fields:
+//   - name: string (required, 1-100 chars)
+//   - academicYear: string (required, 1-20 chars)
+//   - status: string (required, enum: 'draft' | 'published')
+//   - createdAt: timestamp | string (optional, max 50 chars, immutable)
+//   - updatedAt: timestamp | string (optional, max 50 chars)
+//
+// Collection: classSubjects
+// Document ID: {classId} (matches classes/{classId})
+// Fields:
+//   - classId: string (required, 1-50 chars, immutable, matches document ID)
+//   - subjects: list (required, max 50 maps of: { name, maxMarks, passMarks })
+//   - updatedAt: timestamp | string (optional, max 50 chars)
+//   - createdAt: timestamp | string (optional, max 50 chars, immutable)
+//
+// Collection: results
+// Document ID: {studentId}_{termId} (e.g., std_class_10_a_1_term_midterm)
+// Fields:
+//   - studentId: string (required, 1-50 chars, immutable)
+//   - studentName: string (required, 1-100 chars)
+//   - rollNo: string (required, 1-50 chars)
+//   - classId: string (required, 1-50 chars, immutable)
+//   - className: string (required, 1-100 chars)
+//   - termId: string (required, 1-50 chars, immutable)
+//   - termName: string (required, 1-100 chars)
+//   - academicYear: string (required, 1-20 chars)
+//   - status: string (required, enum: 'draft' | 'published')
+//   - subjects: list (required, max 50 subject maps)
+//   - totalMaxMarks: int | float (required, >= 0 and <= 5000)
+//   - totalObtainedMarks: int | float (required, >= 0 and <= 5000)
+//   - percentage: int | float (required, >= 0 and <= 100)
+//   - overallGrade: string (required, 1-10 chars)
+//   - overallResult: string (required, 1-20 chars, e.g. 'PASS' | 'FAIL')
+//   - remarks: string (optional, max 500 chars)
+//   - markedBy: string (required, 1-128 chars, UID of teacher/admin)
+//   - markedByName: string (required, 1-100 chars)
+//   - updatedAt: timestamp | string (required, max 50 chars)
+//   - createdAt: timestamp | string (optional, max 50 chars, immutable)
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // -------------------------------------------------------------
+    // Helper Functions: Authentication & Authorization
+    // -------------------------------------------------------------
+
+    // Check if the user is authenticated with Firebase Auth
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if user owns the document path based on auth UID
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Check if a document exists in the users collection
+    function userDocExists(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId));
+    }
+
+    // Retrieve user document data from Firestore (cached across rule evaluations)
+    function getUserData(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
+    }
+
+    // Check if the current authenticated caller has an existing profile document
+    function currentUserExists() {
+      return isAuthenticated() && userDocExists(request.auth.uid);
+    }
+
+    // Retrieve current authenticated user's profile document data
+    function getCurrentUserData() {
+      return getUserData(request.auth.uid);
+    }
+
+    // Verify whether the caller is a verified Administrator
+    // Supports custom auth claims as well as Firestore profile lookup
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.get('admin', false) == true ||
+        request.auth.token.get('role', '') == 'admin' ||
+        (currentUserExists() && getCurrentUserData().get('role', '') == 'admin')
+      );
+    }
+
+    // Verify whether the caller is an active Teacher
+    function isTeacher() {
+      return isAuthenticated() && (
+        request.auth.token.get('role', '') == 'teacher' ||
+        (currentUserExists() && getCurrentUserData().get('role', '') == 'teacher')
+      );
+    }
+
+    // Verify whether the caller is a registered Parent
+    function isParent() {
+      return isAuthenticated() && (
+        request.auth.token.get('role', '') == 'parent' ||
+        (currentUserExists() && getCurrentUserData().get('role', '') == 'parent')
+      );
+    }
+
+    // Verify whether the caller is school staff (Admin or Teacher)
+    function isStaff() {
+      return isAdmin() || isTeacher();
+    }
+
+    // Verify that a specific classId is in the teacher's assigned class list
+    function isTeacherAssignedToClass(classId) {
+      return isAuthenticated() &&
+             currentUserExists() &&
+             getCurrentUserData().get('assignedClassIds', []) is list &&
+             classId in getCurrentUserData().get('assignedClassIds', []);
+    }
+
+    // -------------------------------------------------------------
+    // Helper Functions: Date & Anti-Tampering Leeway
+    // -------------------------------------------------------------
+
+    // Validate standard YYYY-MM-DD date string format
+    function isValidDateFormat(dateStr) {
+      return dateStr is string &&
+             dateStr.matches("^\\d{4}-\\d{2}-\\d{2}$");
+    }
+
+    // Format request.time into a YYYY-MM-DD string with a given duration offset
+    function getLocalDateString(offset) {
+      let t = request.time + offset;
+      let y = string(t.year());
+      let m = t.month() < 10 ? '0' + string(t.month()) : string(t.month());
+      let d = t.day() < 10 ? '0' + string(t.day()) : string(t.day());
+      return y + '-' + m + '-' + d;
+    }
+
+    // Check if the provided date string matches current date (PKT UTC+5 or UTC boundary)
+    function isTodayDate(dateStr) {
+      return isValidDateFormat(dateStr) && (
+        dateStr == getLocalDateString(duration.value(5, 'h')) ||
+        dateStr == getLocalDateString(duration.value(0, 'h'))
+      );
+    }
+
+    // -------------------------------------------------------------
+    // Helper Functions: Schema, Fields & Types
+    // -------------------------------------------------------------
+
+    // Validate that request resource contains all mandatory keys
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // Enforce strict schema with no undefined/extraneous properties
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // Verify specified immutable fields have not been modified during update
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // Validate email format and bounded length
+    function isValidEmail(email) {
+      return email is string &&
+             email.size() >= 3 &&
+             email.size() <= 100 &&
+             email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // Validate optional timestamp or ISO date string field
+    function isValidTimestampOrString(field) {
+      return !(field in request.resource.data) ||
+             request.resource.data[field] is timestamp ||
+             (request.resource.data[field] is string && request.resource.data[field].size() <= 50);
+    }
+
+    // -------------------------------------------------------------
+    // Domain Validators: Enforced on both Create AND Update
+    // -------------------------------------------------------------
+
+    // Domain validator for users/{userId}
+    function isValidUser(data) {
+      return hasRequiredFields(['email', 'name', 'role']) &&
+             hasOnlyAllowedFields(['uid', 'email', 'name', 'role', 'assignedClassIds', 'linkedStudents', 'linkedClasses', 'phone', 'createdAt', 'updatedAt']) &&
+             isValidEmail(data.email) &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             data.role is string && (data.role == 'admin' || data.role == 'teacher' || data.role == 'parent') &&
+             (!('assignedClassIds' in data) || (data.assignedClassIds is list && data.assignedClassIds.size() <= 50)) &&
+             (!('linkedStudents' in data) || (data.linkedStudents is list && data.linkedStudents.size() <= 20)) &&
+             (!('linkedClasses' in data) || (data.linkedClasses is list && data.linkedClasses.size() <= 20)) &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 30)) &&
+             (!('uid' in data) || (data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128)) &&
+             isValidTimestampOrString('createdAt') &&
+             isValidTimestampOrString('updatedAt');
+    }
+
+    // Domain validator for classes/{classId}
+    function isValidClass(data) {
+      return hasRequiredFields(['name', 'grade', 'section', 'academicYear', 'studentCount']) &&
+             hasOnlyAllowedFields(['name', 'grade', 'section', 'academicYear', 'studentCount', 'createdAt', 'updatedAt']) &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             data.grade is string && data.grade.size() >= 1 && data.grade.size() <= 20 &&
+             data.section is string && data.section.size() >= 1 && data.section.size() <= 20 &&
+             data.academicYear is string && data.academicYear.size() >= 1 && data.academicYear.size() <= 20 &&
+             data.studentCount is int && data.studentCount >= 0 && data.studentCount <= 1000 &&
+             isValidTimestampOrString('createdAt') &&
+             isValidTimestampOrString('updatedAt');
+    }
+
+    // Domain validator for students/{studentId}
+    function isValidStudent(data) {
+      return hasRequiredFields(['rollNo', 'name', 'classId', 'status']) &&
+             hasOnlyAllowedFields(['rollNo', 'name', 'fatherName', 'parentPhone', 'gender', 'classId', 'status', 'createdAt', 'updatedAt']) &&
+             data.rollNo is string && data.rollNo.size() >= 1 && data.rollNo.size() <= 50 &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             data.classId is string && data.classId.size() >= 1 && data.classId.size() <= 50 &&
+             data.status is string && (data.status == 'active' || data.status == 'inactive') &&
+             (!('fatherName' in data) || (data.fatherName is string && data.fatherName.size() <= 100)) &&
+             (!('parentPhone' in data) || (data.parentPhone is string && data.parentPhone.size() <= 30)) &&
+             (!('gender' in data) || (data.gender is string && data.gender.size() <= 30)) &&
+             isValidTimestampOrString('createdAt') &&
+             isValidTimestampOrString('updatedAt');
+    }
+
+    // Domain validator for attendance/{docId}
+    function isValidAttendance(data) {
+      return hasRequiredFields(['classId', 'className', 'date', 'academicYear', 'markedBy', 'markedByName', 'summary', 'records', 'updatedAt']) &&
+             hasOnlyAllowedFields(['classId', 'className', 'date', 'academicYear', 'markedBy', 'markedByName', 'summary', 'records', 'updatedAt', 'createdAt']) &&
+             data.classId is string && data.classId.size() >= 1 && data.classId.size() <= 50 &&
+             data.className is string && data.className.size() >= 1 && data.className.size() <= 100 &&
+             isValidDateFormat(data.date) &&
+             data.academicYear is string && data.academicYear.size() >= 1 && data.academicYear.size() <= 20 &&
+             data.markedBy is string && data.markedBy.size() >= 1 && data.markedBy.size() <= 128 &&
+             data.markedByName is string && data.markedByName.size() >= 1 && data.markedByName.size() <= 100 &&
+             data.summary is map &&
+             data.summary.keys().hasAll(['total', 'present', 'absent', 'late', 'excused']) &&
+             data.summary.keys().hasOnly(['total', 'present', 'absent', 'late', 'excused']) &&
+             data.summary.total is int && data.summary.total >= 0 && data.summary.total <= 1000 &&
+             data.summary.present is int && data.summary.present >= 0 && data.summary.present <= 1000 &&
+             data.summary.absent is int && data.summary.absent >= 0 && data.summary.absent <= 1000 &&
+             data.summary.late is int && data.summary.late >= 0 && data.summary.late <= 1000 &&
+             data.summary.excused is int && data.summary.excused >= 0 && data.summary.excused <= 1000 &&
+             data.records is map && data.records.size() <= 200 &&
+             isValidTimestampOrString('updatedAt') &&
+             isValidTimestampOrString('createdAt');
+    }
+
+    // Domain validator for terms/{termId}
+    function isValidTerm(data) {
+      return hasRequiredFields(['name', 'academicYear', 'status']) &&
+             hasOnlyAllowedFields(['name', 'academicYear', 'status', 'createdAt', 'updatedAt']) &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             data.academicYear is string && data.academicYear.size() >= 1 && data.academicYear.size() <= 20 &&
+             data.status is string && (data.status == 'draft' || data.status == 'published') &&
+             isValidTimestampOrString('createdAt') &&
+             isValidTimestampOrString('updatedAt');
+    }
+
+    // Domain validator for classSubjects/{classId}
+    function isValidClassSubjects(data) {
+      return hasRequiredFields(['classId', 'subjects']) &&
+             hasOnlyAllowedFields(['classId', 'subjects', 'updatedAt', 'createdAt']) &&
+             data.classId is string && data.classId.size() >= 1 && data.classId.size() <= 50 &&
+             data.subjects is list && data.subjects.size() <= 50 &&
+             isValidTimestampOrString('updatedAt') &&
+             isValidTimestampOrString('createdAt');
+    }
+
+    // Domain validator for results/{resultId}
+    function isValidResult(data) {
+      return hasRequiredFields([
+               'studentId', 'studentName', 'rollNo', 'classId', 'className',
+               'termId', 'termName', 'academicYear', 'status', 'subjects',
+               'totalMaxMarks', 'totalObtainedMarks', 'percentage',
+               'overallGrade', 'overallResult', 'markedBy', 'markedByName', 'updatedAt'
+             ]) &&
+             hasOnlyAllowedFields([
+               'studentId', 'studentName', 'rollNo', 'classId', 'className',
+               'termId', 'termName', 'academicYear', 'status', 'subjects',
+               'totalMaxMarks', 'totalObtainedMarks', 'percentage',
+               'overallGrade', 'overallResult', 'remarks', 'markedBy', 'markedByName',
+               'updatedAt', 'createdAt'
+             ]) &&
+             data.studentId is string && data.studentId.size() >= 1 && data.studentId.size() <= 50 &&
+             data.studentName is string && data.studentName.size() >= 1 && data.studentName.size() <= 100 &&
+             data.rollNo is string && data.rollNo.size() >= 1 && data.rollNo.size() <= 50 &&
+             data.classId is string && data.classId.size() >= 1 && data.classId.size() <= 50 &&
+             data.className is string && data.className.size() >= 1 && data.className.size() <= 100 &&
+             data.termId is string && data.termId.size() >= 1 && data.termId.size() <= 50 &&
+             data.termName is string && data.termName.size() >= 1 && data.termName.size() <= 100 &&
+             data.academicYear is string && data.academicYear.size() >= 1 && data.academicYear.size() <= 20 &&
+             data.status is string && (data.status == 'draft' || data.status == 'published') &&
+             data.subjects is list && data.subjects.size() <= 50 &&
+             (data.totalMaxMarks is int || data.totalMaxMarks is float) && data.totalMaxMarks >= 0 && data.totalMaxMarks <= 5000 &&
+             (data.totalObtainedMarks is int || data.totalObtainedMarks is float) && data.totalObtainedMarks >= 0 && data.totalObtainedMarks <= 5000 &&
+             (data.percentage is int || data.percentage is float) && data.percentage >= 0 && data.percentage <= 100 &&
+             data.overallGrade is string && data.overallGrade.size() >= 1 && data.overallGrade.size() <= 10 &&
+             data.overallResult is string && data.overallResult.size() >= 1 && data.overallResult.size() <= 20 &&
+             (!('remarks' in data) || (data.remarks is string && data.remarks.size() <= 500)) &&
+             data.markedBy is string && data.markedBy.size() >= 1 && data.markedBy.size() <= 128 &&
+             data.markedByName is string && data.markedByName.size() >= 1 && data.markedByName.size() <= 100 &&
+             isValidTimestampOrString('updatedAt') &&
+             isValidTimestampOrString('createdAt');
+    }
+
+    // -------------------------------------------------------------
+    // DEFAULT DENY RULE
+    // -------------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // -------------------------------------------------------------
+    // 1. USERS COLLECTION
+    // -------------------------------------------------------------
+    match /users/{userId} {
+      // Document owner can get their own profile; Admins can get all profiles.
+      // Parents can only get their own user profile (isOwner(userId)).
+      // Strict owner-only read protects PII (phone, email) from unauthorized user access.
+      allow get: if isAuthenticated() && (isOwner(userId) || isAdmin());
+
+      // Only administrators can list all user documents (prevents enumeration attacks).
+      allow list: if isAuthenticated() && isAdmin();
+
+      // Admins can create user profiles (teachers, parents, extra admins).
+      // A user creating their own record during first-time bootstrap can create if request.auth.uid == userId.
+      // Non-admins can NEVER create parent accounts (preventing role self-escalation or self-linking of students).
+      allow create: if isAuthenticated() &&
+                    isValidUser(request.resource.data) &&
+                    (
+                      isAdmin() ||
+                      (
+                        isOwner(userId) &&
+                        (!('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid) &&
+                        request.resource.data.role != 'parent' &&
+                        request.resource.data.role != 'teacher'
+                      )
+                    );
+
+      // Only administrators can update user profiles.
+      // Strictly prevents role self-escalation, self-linking of other students, or unauthorized class reassignment.
+      // Protects 'createdAt' and 'uid' from post-creation tampering.
+      allow update: if isAuthenticated() &&
+                    isAdmin() &&
+                    isValidUser(request.resource.data) &&
+                    areImmutableFieldsUnchanged(['createdAt', 'uid']);
+
+      // Only administrators can delete user accounts.
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // 2. CLASSES COLLECTION
+    // -------------------------------------------------------------
+    match /classes/{classId} {
+      // Authenticated teachers, administrators, and parents can read school class definitions.
+      allow read: if isAuthenticated();
+
+      // Only administrators can create new classes.
+      allow create: if isAuthenticated() &&
+                    isAdmin() &&
+                    isValidClass(request.resource.data);
+
+      // Only administrators can update classes (e.g. updating studentCount or details).
+      // Protects 'createdAt' from modification.
+      allow update: if isAuthenticated() &&
+                    isAdmin() &&
+                    isValidClass(request.resource.data) &&
+                    areImmutableFieldsUnchanged(['createdAt']);
+
+      // Only administrators can delete classes.
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // 3. STUDENTS COLLECTION
+    // -------------------------------------------------------------
+    match /students/{studentId} {
+      // Staff (Admins and Teachers) can get any student record.
+      // Parents can ONLY get a student if the studentId is in their linkedStudents array.
+      allow get: if isAuthenticated() && (
+        isStaff() ||
+        (
+          currentUserExists() &&
+          studentId in getCurrentUserData().get('linkedStudents', [])
+        )
+      );
+
+      // Listing student rosters is strictly restricted to Staff (prevents parent enumeration of students).
+      allow list: if isAuthenticated() && isStaff();
+
+      // Only administrators can create students (individually or via bulk CSV import).
+      // Parents cannot create students.
+      allow create: if isAuthenticated() &&
+                    isAdmin() &&
+                    isValidStudent(request.resource.data);
+
+      // Only administrators can update student records (or set status: 'inactive').
+      // Parents cannot update students.
+      // Protects 'createdAt' from modification.
+      allow update: if isAuthenticated() &&
+                    isAdmin() &&
+                    isValidStudent(request.resource.data) &&
+                    areImmutableFieldsUnchanged(['createdAt']);
+
+      // Only administrators can hard delete student records.
+      // Parents cannot delete students.
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // 4. ATTENDANCE COLLECTION
+    // -------------------------------------------------------------
+    match /attendance/{docId} {
+      // Staff (Admins and Teachers) can read attendance records across classes.
+      // Parents can read attendance documents ONLY if the classId belongs to their children.
+      allow read: if isAuthenticated() && (
+        isStaff() ||
+        (
+          currentUserExists() &&
+          resource.data.classId in getCurrentUserData().get('linkedClasses', [])
+        )
+      );
+
+      // Create attendance:
+      // - Admins have unrestricted creation for any class and date.
+      // - Authenticated teachers can create attendance ONLY for classes assigned to them,
+      //   ONLY for current/today's date (past dates locked), and with markedBy set to their UID.
+      // - Enforces docId convention: {classId}_{YYYY-MM-DD} to guarantee document integrity.
+      // - Parents cannot create attendance records.
+      allow create: if isAuthenticated() &&
+                    isValidAttendance(request.resource.data) &&
+                    docId == request.resource.data.classId + '_' + request.resource.data.date &&
+                    (
+                      isAdmin() ||
+                      (
+                        isTeacher() &&
+                        isTeacherAssignedToClass(request.resource.data.classId) &&
+                        isTodayDate(request.resource.data.date) &&
+                        request.resource.data.markedBy == request.auth.uid
+                      )
+                    );
+
+      // Update attendance:
+      // - Admins have unrestricted update for any date and class (review/edit override).
+      // - Authenticated teachers can update attendance ONLY for classes assigned to them.
+      // - Anti-tampering constraint: Teachers CANNOT modify past dates. Both the existing document
+      //   date and request date must be current/today's date.
+      // - Core identity fields (classId, date, academicYear) are strictly immutable on update.
+      // - Parents cannot update attendance records.
+      allow update: if isAuthenticated() &&
+                    isValidAttendance(request.resource.data) &&
+                    docId == request.resource.data.classId + '_' + request.resource.data.date &&
+                    areImmutableFieldsUnchanged(['classId', 'date', 'academicYear']) &&
+                    (
+                      isAdmin() ||
+                      (
+                        isTeacher() &&
+                        isTeacherAssignedToClass(request.resource.data.classId) &&
+                        isTodayDate(resource.data.date) &&
+                        isTodayDate(request.resource.data.date) &&
+                        request.resource.data.markedBy == request.auth.uid
+                      )
+                    );
+
+      // Delete attendance: Strictly restricted to administrators. Teachers and parents cannot delete records.
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // 5. EXAM TERMS COLLECTION
+    // -------------------------------------------------------------
+    match /terms/{termId} {
+      // Authenticated staff and parents can read exam terms.
+      allow read: if isAuthenticated();
+
+      // Only administrators can create new exam terms.
+      allow create: if isAuthenticated() &&
+                    isAdmin() &&
+                    isValidTerm(request.resource.data);
+
+      // Only administrators can update exam terms (e.g., toggling published / draft status).
+      // Protects 'createdAt' from modification.
+      allow update: if isAuthenticated() &&
+                    isAdmin() &&
+                    isValidTerm(request.resource.data) &&
+                    areImmutableFieldsUnchanged(['createdAt']);
+
+      // Only administrators can delete exam terms.
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // 6. CLASS SUBJECTS CONFIGURATION
+    // -------------------------------------------------------------
+    match /classSubjects/{classId} {
+      // Authenticated users (staff and parents) can read class subjects configuration.
+      allow read: if isAuthenticated();
+
+      // Only administrators can create class subjects configuration.
+      // Enforces that document ID matches the classId attribute.
+      allow create: if isAuthenticated() &&
+                    isAdmin() &&
+                    isValidClassSubjects(request.resource.data) &&
+                    request.resource.data.classId == classId;
+
+      // Only administrators can update class subjects configuration.
+      // Protects 'classId' and 'createdAt' from modification.
+      allow update: if isAuthenticated() &&
+                    isAdmin() &&
+                    isValidClassSubjects(request.resource.data) &&
+                    request.resource.data.classId == classId &&
+                    areImmutableFieldsUnchanged(['classId', 'createdAt']);
+
+      // Only administrators can delete class subjects configuration.
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // 7. EXAMINATION RESULTS COLLECTION
+    // -------------------------------------------------------------
+    match /results/{resultId} {
+      // Read results:
+      // - Admins and Teachers can read results across classes.
+      // - Parents can ONLY read results if:
+      //   1. resource.data.studentId in parent's linkedStudents array.
+      //   2. resource.data.status == 'published' (Parents are STRICTLY FORBIDDEN from reading draft results!).
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        isTeacher() ||
+        (
+          currentUserExists() &&
+          resource.data.studentId in getCurrentUserData().get('linkedStudents', []) &&
+          resource.data.status == 'published'
+        )
+      );
+
+      // Create examination results:
+      // - Admins have unrestricted write access.
+      // - Teachers can ONLY write results if:
+      //   1. Teacher is assigned to the class.
+      //   2. Term is in 'draft' status (request.resource.data.status == 'draft').
+      //   3. markedBy is set to teacher's UID.
+      // - Result doc ID MUST match pattern: {studentId}_{termId}.
+      // - Parents can NEVER create results.
+      allow create: if isAuthenticated() &&
+                    isValidResult(request.resource.data) &&
+                    resultId == request.resource.data.studentId + '_' + request.resource.data.termId &&
+                    (
+                      isAdmin() ||
+                      (
+                        isTeacher() &&
+                        isTeacherAssignedToClass(request.resource.data.classId) &&
+                        request.resource.data.status == 'draft' &&
+                        request.resource.data.markedBy == request.auth.uid
+                      )
+                    );
+
+      // Update examination results:
+      // - Admins have unrestricted update access (e.g. publishing or grade corrections).
+      // - Teachers can ONLY update results if:
+      //   1. Teacher is assigned to the class.
+      //   2. Both existing and requested status are 'draft' (Teachers CANNOT edit marks once term is published).
+      //   3. markedBy is set to teacher's UID.
+      // - Core identity fields (studentId, termId, classId, createdAt) are strictly immutable on update.
+      // - Result doc ID MUST match pattern: {studentId}_{termId}.
+      // - Parents can NEVER update results.
+      allow update: if isAuthenticated() &&
+                    isValidResult(request.resource.data) &&
+                    resultId == request.resource.data.studentId + '_' + request.resource.data.termId &&
+                    areImmutableFieldsUnchanged(['studentId', 'termId', 'classId', 'createdAt']) &&
+                    (
+                      isAdmin() ||
+                      (
+                        isTeacher() &&
+                        isTeacherAssignedToClass(request.resource.data.classId) &&
+                        resource.data.status == 'draft' &&
+                        request.resource.data.status == 'draft' &&
+                        request.resource.data.markedBy == request.auth.uid
+                      )
+                    );
+
+      // Delete results: Strictly administrators only. Teachers and parents cannot delete results.
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+  }
+}

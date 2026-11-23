@@ -1,0 +1,105 @@
+/**
+ * Custom CSS & Print Media Stylesheet
+ * The Country School ShahJamal Attendance System
+ */
+
+/* Responsive & Mobile Touch Optimizations */
+button, select, input, a {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Print-Specific Stylesheet for Clean Hardcopy Reports */
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Hide navigation, buttons, modals, and non-printable elements */
+  header, 
+  nav, 
+  footer, 
+  #toast-container,
+  #firebase-config-warning,
+  .print\\:hidden,
+  button,
+  .admin-nav-tab,
+  #modal-admin-attendance {
+    display: none !important;
+  }
+
+  /* Expand report view to full print width */
+  #admin-tab-reports,
+  #report-results-container,
+  table {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border-color: #000000 !important;
+  }
+
+  table {
+    border-collapse: collapse !important;
+  }
+
+  th, td {
+    border: 1px solid #d1d5db !important;
+    padding: 4px 6px !important;
+    font-size: 8pt !important;
+  }
+
+  th {
+    background-color: #f3f4f6 !important;
+    color: #000000 !important;
+  }
+
+  /* Ensure page breaks cleanly */
+  tr {
+    page-break-inside: avoid;
+  }
+
+  /* Specific styles for Official Student Report Card */
+  #parent-child-switcher,
+  #parent-main-section > .grid {
+    display: none !important;
+  }
+
+  #official-student-report-card {
+    border: 2px solid #000000 !important;
+    border-radius: 0 !important;
+    padding: 24px !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+
+  #official-student-report-card table {
+    border: 1px solid #000000 !important;
+  }
+
+  #official-student-report-card th, 
+  #official-student-report-card td {
+    border: 1px solid #000000 !important;
+    font-size: 9pt !important;
+  }
+}
