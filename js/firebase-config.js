@@ -35,7 +35,7 @@ export const firebaseConfig = {
   storageBucket: "country-school-shahjamal.firebasestorage.app",
   messagingSenderId: "735993190409",
   appId: "1:735993190409:web:5309ee85e27511f0d800d8",
-  measurementId: "G-NNY67S5DJX"
+  measurementId: "G-NNY67S5DJX",
 };
 
 /**
