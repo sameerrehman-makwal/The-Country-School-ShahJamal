@@ -10,9 +10,46 @@
   <link rel="stylesheet" href="./css/custom.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+    /* Urdu Typography & Generous Line-Height (prevents clipping) */
+    body.lang-ur {
+      font-family: 'Noto Sans Arabic', 'Noto Nastaliq Urdu', 'Plus Jakarta Sans', sans-serif;
+    }
+    body.lang-ur .urdu-nastaliq {
+      font-family: 'Noto Nastaliq Urdu', 'Noto Sans Arabic', serif;
+      line-height: 2.1;
+    }
+    body.lang-ur h1,
+    body.lang-ur h2,
+    body.lang-ur h3,
+    body.lang-ur h4 {
+      font-family: 'Noto Sans Arabic', 'Noto Nastaliq Urdu', sans-serif;
+      line-height: 1.55;
+    }
+    body.lang-ur button,
+    body.lang-ur input,
+    body.lang-ur select,
+    body.lang-ur textarea {
+      font-family: 'Noto Sans Arabic', 'Noto Nastaliq Urdu', sans-serif;
+      line-height: 1.5;
+    }
+    body.lang-ur label,
+    body.lang-ur p,
+    body.lang-ur span,
+    body.lang-ur th,
+    body.lang-ur td {
+      line-height: 1.6;
+    }
+    /* Ensure switching to Urdu never breaks the top navigation bar, flex alignment, or table columns */
+    body.lang-ur header,
+    body.lang-ur nav,
+    body.lang-ur table,
+    body.lang-ur .flex {
+      unicode-bidi: plaintext;
+    }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
@@ -26,24 +63,33 @@
       <div class="flex items-center gap-3">
         <img src="logo.png" alt="The Country School Logo" class="w-[42px] h-[42px] object-contain flex-shrink-0" style="width: 42px; height: 42px; object-fit: contain;">
         <div>
-          <h1 class="font-extrabold text-base sm:text-lg text-slate-900 leading-tight">The Country School</h1>
-          <p class="text-xs font-semibold text-indigo-600 tracking-wide uppercase">ShahJamal Campus • Attendance</p>
+          <h1 class="font-extrabold text-base sm:text-lg text-slate-900 leading-tight" data-i18n="header_school_name">The Country School</h1>
+          <p class="text-xs font-semibold text-indigo-600 tracking-wide uppercase" data-i18n="header_campus_title">ShahJamal Campus • Attendance</p>
         </div>
       </div>
 
-      <!-- Network Badge & User Profile Controls -->
-      <div class="flex items-center gap-3">
+      <!-- Network Badge, Language Toggle & User Profile Controls -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <!-- Language Switcher Pill -->
+        <button id="btn-lang-toggle" type="button" aria-label="Toggle language"
+                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition shadow-xs cursor-pointer select-none">
+          <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/>
+          </svg>
+          <span id="lang-toggle-text">اردو</span>
+        </button>
+
         <div id="network-status-badge" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
           <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>Online</span>
+          <span data-i18n="badge_online">Online</span>
         </div>
 
         <div id="user-header-profile" class="hidden items-center gap-2.5 pl-2 border-l border-slate-200">
           <div class="hidden sm:block text-right">
-            <div id="header-user-name" class="text-xs font-bold text-slate-900 leading-tight">Admin User</div>
-            <div id="header-user-role" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 inline-block mt-0.5">Admin</div>
+            <div id="header-user-name" class="text-xs font-bold text-slate-900 leading-tight" data-i18n="header_user_default">Admin User</div>
+            <div id="header-user-role" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 inline-block mt-0.5" data-i18n="role_admin">Admin</div>
           </div>
-          <button id="btn-logout" title="Sign Out" class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition">
+          <button id="btn-logout" title="Sign Out" data-i18n-title="btn_signout" class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
             </svg>
@@ -56,7 +102,7 @@
   <!-- =====================================================================
        FIREBASE CONFIG WARNING BANNER
        ===================================================================== -->
-  <div id="firebase-config-warning" class="hidden bg-amber-500 text-white px-4 py-3 text-xs sm:text-sm font-semibold text-center shadow-inner">
+  <div id="firebase-config-warning" class="hidden bg-amber-500 text-white px-4 py-3 text-xs sm:text-sm font-semibold text-center shadow-inner" data-i18n="firebase_warning">
     ⚠️ <span class="font-bold">Configuration Notice:</span> Firebase credentials are currently set to placeholders in 
     <code class="bg-amber-600 px-2 py-0.5 rounded font-mono text-xs">js/firebase-config.js</code>. 
     Please paste your Firebase project keys to enable real-time cloud sync.
@@ -66,7 +112,7 @@
   <div id="app-loading" class="fixed inset-0 bg-white/80 backdrop-blur-xs flex items-center justify-center z-50">
     <div class="text-center">
       <div class="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-3"></div>
-      <p class="text-sm font-bold text-slate-700">Connecting to Attendance System...</p>
+      <p id="app-loading-text" class="text-sm font-bold text-slate-700" data-i18n="loading_text">Connecting to Attendance System...</p>
     </div>
   </div>
 
@@ -82,34 +128,34 @@
       <div class="bg-white rounded-3xl p-8 border border-slate-200 shadow-xl shadow-slate-200/50">
         <div class="text-center mb-8">
           <img src="logo.png" alt="The Country School Logo" class="w-16 h-16 mx-auto mb-4 object-contain" style="width: 64px; height: 64px; object-fit: contain;">
-          <h2 class="text-2xl font-black text-slate-900 tracking-tight">Staff & Parent Portal</h2>
-          <p class="text-xs text-slate-500 mt-1">Students, Parents, Teachers & Administrators</p>
+          <h2 class="text-2xl font-black text-slate-900 tracking-tight" data-i18n="login_portal_title">Staff & Parent Portal</h2>
+          <p class="text-xs text-slate-500 mt-1" data-i18n="login_portal_subtitle">Students, Parents, Teachers & Administrators</p>
         </div>
 
         <form id="login-form" class="space-y-4">
           <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="login-email">Student ID / Staff Email</label>
-            <input type="text" id="login-email" required placeholder="e.g. 1001 or staff@countryschool.edu"
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="login-email" data-i18n="label_login_email">Student ID / Staff Email</label>
+            <input type="text" id="login-email" required placeholder="e.g. 1001 or staff@countryschool.edu" data-i18n-placeholder="placeholder_login_email"
                    class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-sm font-medium transition">
-            <p class="text-[11px] text-slate-400 mt-1.5">
+            <p class="text-[11px] text-slate-400 mt-1.5" data-i18n-html="login_email_hint">
               💡 <strong>Parents:</strong> Enter your child's Roll/Student ID (e.g. <strong class="text-slate-600">1001</strong>). 
               <strong>Staff:</strong> Enter your school email.
             </p>
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="login-password">Password</label>
-            <input type="password" id="login-password" required placeholder="••••••••"
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" for="login-password" data-i18n="label_login_password">Password</label>
+            <input type="password" id="login-password" required placeholder="••••••••" data-i18n-placeholder="placeholder_login_password"
                    class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-sm font-medium transition">
           </div>
 
-          <button type="submit" id="btn-login-submit"
+          <button type="submit" id="btn-login-submit" data-i18n="btn_login_submit"
                   class="w-full py-3.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md shadow-indigo-100 transition active:scale-[0.99]">
             Sign In to Portal
           </button>
         </form>
 
-        <div class="mt-6 pt-6 border-t border-slate-100 text-center text-xs text-slate-400">
+        <div class="mt-6 pt-6 border-t border-slate-100 text-center text-xs text-slate-400" data-i18n="login_footer">
           Powered by Firebase Spark Tier & GitHub Pages • Zero Hosting Costs
         </div>
       </div>
@@ -118,16 +164,15 @@
       <div id="bootstrap-admin-card" class="hidden mt-6 bg-purple-50 border border-purple-200 rounded-3xl p-6 text-purple-950">
         <div class="flex items-center gap-2 mb-2 font-black text-sm text-purple-900">
           <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-          Fresh Setup Detected: Initialize First Administrator
+          <span data-i18n="bootstrap_title">Fresh Setup Detected: Initialize First Administrator</span>
         </div>
         <p class="text-xs text-purple-800 leading-relaxed mb-4">
-          You are signed in as <span id="bootstrap-user-email" class="font-bold underline"></span>. 
-          No existing admin was found in Firestore. Initialize this account as the Master School Administrator:
+          <span data-i18n="bootstrap_desc">No existing admin was found in Firestore. Initialize this account as the Master School Administrator:</span>
         </p>
         <div class="space-y-3">
-          <input type="text" id="bootstrap-name" placeholder="Full Administrator Name (e.g. Principal / IT In-charge)" 
+          <input type="text" id="bootstrap-name" placeholder="Full Administrator Name (e.g. Principal / IT In-charge)" data-i18n-placeholder="placeholder_bootstrap_name"
                  class="w-full px-3.5 py-2.5 rounded-xl border border-purple-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-purple-300">
-          <button id="btn-bootstrap-admin" 
+          <button id="btn-bootstrap-admin" data-i18n="btn_bootstrap_submit"
                   class="w-full py-2.5 px-4 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs shadow-sm transition">
             Initialize Master Administrator Profile
           </button>
@@ -142,10 +187,10 @@
 
       <!-- Teacher Navigation Subtabs -->
       <div class="flex items-center gap-2 p-1.5 bg-white rounded-2xl border border-slate-200 shadow-xs">
-        <button id="btn-teacher-tab-attendance" type="button" class="px-4 py-2 text-xs font-bold rounded-xl bg-indigo-600 text-white shadow-sm transition">
+        <button id="btn-teacher-tab-attendance" type="button" data-i18n="teacher_tab_attendance" class="px-4 py-2 text-xs font-bold rounded-xl bg-indigo-600 text-white shadow-sm transition">
           Daily Attendance Roll Call
         </button>
-        <button id="btn-teacher-tab-marks" type="button" class="px-4 py-2 text-xs font-bold rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+        <button id="btn-teacher-tab-marks" type="button" data-i18n="teacher_tab_marks" class="px-4 py-2 text-xs font-bold rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
           Exam Marks Entry
         </button>
       </div>
@@ -155,8 +200,8 @@
         <div class="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-4">
           <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
         </div>
-        <h3 class="text-lg font-bold text-slate-800">No Classes Assigned</h3>
-        <p class="text-xs text-slate-500 mt-2">Your teacher account does not have any classes linked yet. Please notify the School Administrator to assign your classes.</p>
+        <h3 class="text-lg font-bold text-slate-800" data-i18n="teacher_no_classes_title">No Classes Assigned</h3>
+        <p class="text-xs text-slate-500 mt-2" data-i18n="teacher_no_classes_desc">Your teacher account does not have any classes linked yet. Please notify the School Administrator to assign your classes.</p>
       </div>
 
       <!-- SUBSECTION 1: ATTENDANCE ROLL CALL -->
@@ -167,7 +212,7 @@
           <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <!-- Class Selector -->
             <div>
-              <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1" for="teacher-class-select">Select Class</label>
+              <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1" for="teacher-class-select" data-i18n="lbl_select_class">Select Class</label>
               <select id="teacher-class-select" class="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm font-bold focus:ring-2 focus:ring-indigo-100 outline-none">
                 <!-- Dynamically populated with assigned classes only -->
               </select>
@@ -175,7 +220,7 @@
 
             <!-- Date Picker -->
             <div>
-              <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1" for="teacher-date-input">Attendance Date</label>
+              <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1" for="teacher-date-input" data-i18n="lbl_attendance_date">Attendance Date</label>
               <input type="date" id="teacher-date-input" class="w-full sm:w-auto px-4 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm font-bold focus:ring-2 focus:ring-indigo-100 outline-none">
             </div>
           </div>
@@ -185,12 +230,12 @@
             <button id="btn-mark-all-present" type="button"
                     class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition active:scale-95 flex items-center justify-center gap-1.5">
               <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-              Mark All Present
+              <span data-i18n="btn_mark_all_present">Mark All Present</span>
             </button>
             <button id="btn-save-attendance" type="button"
                     class="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-100 transition active:scale-95 flex items-center justify-center gap-1.5">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
-              Save Attendance
+              <span data-i18n="btn_save_attendance">Save Attendance</span>
             </button>
           </div>
         </div>
@@ -203,23 +248,23 @@
         <!-- Live Status Pill Counters -->
         <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
-            <span class="text-xs font-semibold text-slate-500">Total Enrolled</span>
+            <span class="text-xs font-semibold text-slate-500" data-i18n="stat_total_enrolled">Total Enrolled</span>
             <span id="teacher-stat-total" class="font-extrabold text-lg text-slate-900">0</span>
           </div>
           <div class="bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-100 shadow-xs flex items-center justify-between">
-            <span class="text-xs font-semibold text-emerald-800">Present (P)</span>
+            <span class="text-xs font-semibold text-emerald-800" data-i18n="stat_present_p">Present (P)</span>
             <span id="teacher-stat-present" class="font-extrabold text-lg text-emerald-600">0</span>
           </div>
           <div class="bg-rose-50/60 p-3.5 rounded-2xl border border-rose-100 shadow-xs flex items-center justify-between">
-            <span class="text-xs font-semibold text-rose-800">Absent (A)</span>
+            <span class="text-xs font-semibold text-rose-800" data-i18n="stat_absent_a">Absent (A)</span>
             <span id="teacher-stat-absent" class="font-extrabold text-lg text-rose-600">0</span>
           </div>
           <div class="bg-amber-50/60 p-3.5 rounded-2xl border border-amber-100 shadow-xs flex items-center justify-between">
-            <span class="text-xs font-semibold text-amber-800">Late (L)</span>
+            <span class="text-xs font-semibold text-amber-800" data-i18n="stat_late_l">Late (L)</span>
             <span id="teacher-stat-late" class="font-extrabold text-lg text-amber-600">0</span>
           </div>
           <div class="bg-blue-50/60 p-3.5 rounded-2xl border border-blue-100 shadow-xs flex items-center justify-between col-span-2 sm:col-span-1">
-            <span class="text-xs font-semibold text-blue-800">Excused (E)</span>
+            <span class="text-xs font-semibold text-blue-800" data-i18n="stat_excused_e">Excused (E)</span>
             <span id="teacher-stat-excused" class="font-extrabold text-lg text-blue-600">0</span>
           </div>
         </div>
@@ -236,12 +281,12 @@
         <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <div>
-              <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1" for="teacher-marks-term-select">Select Exam Term</label>
+              <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1" for="teacher-marks-term-select" data-i18n="lbl_select_exam_term">Select Exam Term</label>
               <select id="teacher-marks-term-select" class="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm font-bold focus:ring-2 focus:ring-indigo-100 outline-none">
               </select>
             </div>
             <div>
-              <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1" for="teacher-marks-class-select">Select Assigned Class</label>
+              <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1" for="teacher-marks-class-select" data-i18n="lbl_select_assigned_class">Select Assigned Class</label>
               <select id="teacher-marks-class-select" class="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm font-bold focus:ring-2 focus:ring-indigo-100 outline-none">
               </select>
             </div>
@@ -249,7 +294,7 @@
           <button id="btn-save-marks" type="button"
                   class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-100 transition active:scale-95 flex items-center justify-center gap-1.5">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
-            Save All Marks
+            <span data-i18n="btn_save_all_marks">Save All Marks</span>
           </button>
         </div>
 
@@ -266,25 +311,25 @@
 
       <!-- Navigation Tabs -->
       <nav class="flex flex-wrap gap-2 p-1.5 bg-white rounded-2xl border border-slate-200 shadow-xs">
-        <button data-tab="overview" class="admin-nav-tab px-4 py-2 text-sm font-semibold rounded-xl bg-indigo-600 text-white shadow-sm transition">
+        <button data-tab="overview" data-i18n="admin_nav_overview" class="admin-nav-tab px-4 py-2 text-sm font-semibold rounded-xl bg-indigo-600 text-white shadow-sm transition">
           Daily Overview
         </button>
-        <button data-tab="classes" class="admin-nav-tab px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+        <button data-tab="classes" data-i18n="admin_nav_classes" class="admin-nav-tab px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
           Classes
         </button>
-        <button data-tab="students" class="admin-nav-tab px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+        <button data-tab="students" data-i18n="admin_nav_students" class="admin-nav-tab px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
           Students & CSV Import
         </button>
-        <button data-tab="teachers" class="admin-nav-tab px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+        <button data-tab="teachers" data-i18n="admin_nav_teachers" class="admin-nav-tab px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
           Teacher Profiles
         </button>
-        <button data-tab="reports" class="admin-nav-tab px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+        <button data-tab="reports" data-i18n="admin_nav_reports" class="admin-nav-tab px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
           Monthly Reports & Radar
         </button>
-        <button data-tab="exams" class="admin-nav-tab px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+        <button data-tab="exams" data-i18n="admin_nav_exams" class="admin-nav-tab px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
           Exam Terms & Subjects
         </button>
-        <button data-tab="parents" class="admin-nav-tab px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+        <button data-tab="parents" data-i18n="admin_nav_parents" class="admin-nav-tab px-4 py-2 text-sm font-semibold rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
           Parent Accounts
         </button>
       </nav>
@@ -294,10 +339,10 @@
         <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div class="flex items-center gap-3">
             <div>
-              <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1" for="admin-overview-date">Choose Date</label>
+              <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1" for="admin-overview-date" data-i18n="lbl_choose_date">Choose Date</label>
               <input type="date" id="admin-overview-date" class="px-4 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm font-bold focus:ring-2 focus:ring-indigo-100 outline-none">
             </div>
-            <button id="btn-refresh-overview" class="mt-4 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition" title="Refresh">
+            <button id="btn-refresh-overview" class="mt-4 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition" title="Refresh" data-i18n-title="btn_refresh">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
             </button>
           </div>
@@ -305,19 +350,19 @@
           <!-- School-Wide KPI Cards -->
           <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
             <div class="px-4 py-2 rounded-2xl bg-indigo-50 border border-indigo-100 text-center flex-1 sm:flex-none">
-              <span class="block text-[10px] uppercase font-bold text-indigo-500">School Attendance</span>
+              <span class="block text-[10px] uppercase font-bold text-indigo-500" data-i18n="kpi_school_attendance">School Attendance</span>
               <span id="admin-stat-overall-rate" class="font-extrabold text-base text-indigo-900">0%</span>
             </div>
             <div class="px-4 py-2 rounded-2xl bg-emerald-50 border border-emerald-100 text-center flex-1 sm:flex-none">
-              <span class="block text-[10px] uppercase font-bold text-emerald-600">Present</span>
+              <span class="block text-[10px] uppercase font-bold text-emerald-600" data-i18n="kpi_present">Present</span>
               <span id="admin-stat-school-present" class="font-extrabold text-base text-emerald-700">0</span>
             </div>
             <div class="px-4 py-2 rounded-2xl bg-rose-50 border border-rose-100 text-center flex-1 sm:flex-none">
-              <span class="block text-[10px] uppercase font-bold text-rose-600">Absent</span>
+              <span class="block text-[10px] uppercase font-bold text-rose-600" data-i18n="kpi_absent">Absent</span>
               <span id="admin-stat-school-absent" class="font-extrabold text-base text-rose-700">0</span>
             </div>
             <div class="px-4 py-2 rounded-2xl bg-slate-50 border border-slate-200 text-center flex-1 sm:flex-none">
-              <span class="block text-[10px] uppercase font-bold text-slate-500">Classes Marked</span>
+              <span class="block text-[10px] uppercase font-bold text-slate-500" data-i18n="kpi_classes_marked">Classes Marked</span>
               <span id="admin-stat-marked-classes" class="font-extrabold text-base text-slate-800">0 / 0</span>
             </div>
           </div>
@@ -333,30 +378,30 @@
       <div id="admin-tab-classes" class="admin-tab-content hidden space-y-6">
         <!-- Add Class Form -->
         <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs">
-          <h3 class="text-base font-bold text-slate-900 mb-4">Register New Class / Section</h3>
+          <h3 class="text-base font-bold text-slate-900 mb-4" data-i18n="admin_classes_heading">Register New Class / Section</h3>
           <form id="form-add-class" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
             <div>
-              <label class="block text-xs font-bold text-slate-600 mb-1" for="class-name">Class Display Name</label>
-              <input type="text" id="class-name" required placeholder="e.g. Grade 10 - Section A"
+              <label class="block text-xs font-bold text-slate-600 mb-1" for="class-name" data-i18n="lbl_class_name">Class Display Name</label>
+              <input type="text" id="class-name" required placeholder="e.g. Grade 10 - Section A" data-i18n-placeholder="placeholder_class_name"
                      class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
             </div>
             <div>
-              <label class="block text-xs font-bold text-slate-600 mb-1" for="class-grade">Grade / Year</label>
-              <input type="text" id="class-grade" required placeholder="e.g. 10"
+              <label class="block text-xs font-bold text-slate-600 mb-1" for="class-grade" data-i18n="lbl_class_grade">Grade / Year</label>
+              <input type="text" id="class-grade" required placeholder="e.g. 10" data-i18n-placeholder="placeholder_class_grade"
                      class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
             </div>
             <div>
-              <label class="block text-xs font-bold text-slate-600 mb-1" for="class-section">Section</label>
-              <input type="text" id="class-section" required placeholder="e.g. A"
+              <label class="block text-xs font-bold text-slate-600 mb-1" for="class-section" data-i18n="lbl_class_section">Section</label>
+              <input type="text" id="class-section" required placeholder="e.g. A" data-i18n-placeholder="placeholder_class_section"
                      class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
             </div>
             <div>
-              <label class="block text-xs font-bold text-slate-600 mb-1" for="class-academic-year">Academic Year</label>
-              <input type="text" id="class-academic-year" value="2026-2027" placeholder="e.g. 2026-2027"
+              <label class="block text-xs font-bold text-slate-600 mb-1" for="class-academic-year" data-i18n="lbl_academic_year">Academic Year</label>
+              <input type="text" id="class-academic-year" value="2026-2027" placeholder="e.g. 2026-2027" data-i18n-placeholder="placeholder_academic_year"
                      class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
             </div>
             <div>
-              <button type="submit" class="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition">
+              <button type="submit" data-i18n="btn_create_class" class="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition">
                 + Create Class
               </button>
             </div>
@@ -368,11 +413,11 @@
           <table class="w-full text-left text-sm">
             <thead class="bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-500 uppercase tracking-wider">
               <tr>
-                <th class="px-6 py-3.5">Class Name</th>
-                <th class="px-6 py-3.5">Grade</th>
-                <th class="px-6 py-3.5">Section</th>
-                <th class="px-6 py-3.5">Students</th>
-                <th class="px-6 py-3.5 text-right">Actions</th>
+                <th class="px-6 py-3.5" data-i18n="th_class_name">Class Name</th>
+                <th class="px-6 py-3.5" data-i18n="th_grade">Grade</th>
+                <th class="px-6 py-3.5" data-i18n="th_section">Section</th>
+                <th class="px-6 py-3.5" data-i18n="th_students">Students</th>
+                <th class="px-6 py-3.5 text-right" data-i18n="th_actions">Actions</th>
               </tr>
             </thead>
             <tbody id="table-classes-body">
@@ -388,48 +433,48 @@
         <!-- Filter Bar & Bulk Actions -->
         <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
           <div class="flex items-center gap-3">
-            <label class="text-xs font-bold text-slate-700 whitespace-nowrap" for="admin-student-class-filter">Filter Class:</label>
+            <label class="text-xs font-bold text-slate-700 whitespace-nowrap" for="admin-student-class-filter" data-i18n="lbl_filter_class">Filter Class:</label>
             <select id="admin-student-class-filter" class="px-4 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-xs font-bold focus:ring-2 focus:ring-indigo-100 outline-none">
               <!-- Populated dynamically -->
             </select>
           </div>
-          <div class="text-xs text-slate-400">
+          <div class="text-xs text-slate-400" data-i18n="note_scoped_queries">
             Scoped queries guarantee zero-cost reads (max 30-40 per class)
           </div>
         </div>
 
         <!-- Add Single Student Accordion / Form -->
         <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs">
-          <h3 class="text-sm font-bold text-slate-900 mb-4">+ Add Individual Student</h3>
+          <h3 class="text-sm font-bold text-slate-900 mb-4" data-i18n="admin_students_heading">+ Add Individual Student</h3>
           <form id="form-add-student" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
             <div>
-              <label class="block text-[11px] font-bold text-slate-600 mb-1" for="student-add-class">Class</label>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1" for="student-add-class" data-i18n="lbl_student_class">Class</label>
               <select id="student-add-class" required class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
               </select>
             </div>
             <div>
-              <label class="block text-[11px] font-bold text-slate-600 mb-1" for="student-roll">Roll No</label>
-              <input type="text" id="student-roll" required placeholder="e.g. 101"
+              <label class="block text-[11px] font-bold text-slate-600 mb-1" for="student-roll" data-i18n="lbl_student_roll">Roll No</label>
+              <input type="text" id="student-roll" required placeholder="e.g. 101" data-i18n-placeholder="placeholder_student_roll"
                      class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
             </div>
             <div>
-              <label class="block text-[11px] font-bold text-slate-600 mb-1" for="student-name">Student Name</label>
-              <input type="text" id="student-name" required placeholder="Full Name"
+              <label class="block text-[11px] font-bold text-slate-600 mb-1" for="student-name" data-i18n="lbl_student_name">Student Name</label>
+              <input type="text" id="student-name" required placeholder="Full Name" data-i18n-placeholder="placeholder_student_name"
                      class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
             </div>
             <div>
-              <label class="block text-[11px] font-bold text-slate-600 mb-1" for="student-father">Father / Guardian</label>
-              <input type="text" id="student-father" placeholder="Father Name"
+              <label class="block text-[11px] font-bold text-slate-600 mb-1" for="student-father" data-i18n="lbl_student_father">Father / Guardian</label>
+              <input type="text" id="student-father" placeholder="Father Name" data-i18n-placeholder="placeholder_student_father"
                      class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
             </div>
             <div>
-              <label class="block text-[11px] font-bold text-slate-600 mb-1" for="student-phone">WhatsApp Phone</label>
-              <input type="text" id="student-phone" placeholder="03001234567"
+              <label class="block text-[11px] font-bold text-slate-600 mb-1" for="student-phone" data-i18n="lbl_student_phone">WhatsApp Phone</label>
+              <input type="text" id="student-phone" placeholder="03001234567" data-i18n-placeholder="placeholder_student_phone"
                      class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
             </div>
             <div>
               <input type="hidden" id="student-gender" value="Unspecified">
-              <button type="submit" class="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition">
+              <button type="submit" data-i18n="btn_save_student" class="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition">
                 Save Student
               </button>
             </div>
@@ -440,9 +485,9 @@
         <div class="bg-indigo-50/50 rounded-3xl p-6 border border-indigo-100 shadow-xs">
           <div class="flex items-center gap-2 mb-2 font-bold text-sm text-indigo-950">
             <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-            Bulk Student CSV Importer (Upload Entire Classes at Once)
+            <span data-i18n="bulk_importer_title">Bulk Student CSV Importer (Upload Entire Classes at Once)</span>
           </div>
-          <p class="text-xs text-indigo-900/80 mb-4 leading-relaxed">
+          <p class="text-xs text-indigo-900/80 mb-4 leading-relaxed" data-i18n-html="bulk_importer_desc">
             Upload a CSV file containing columns: <code class="font-bold bg-white/70 px-1.5 py-0.5 rounded text-indigo-800">RollNo, Name, FatherName, ParentPhone, Gender</code>. 
             The system batches records in groups of 400 to safely stay well within Firestore limits.
           </p>
@@ -458,8 +503,8 @@
           <!-- CSV Preview Table Container -->
           <div id="csv-preview-container" class="hidden mt-4 bg-white rounded-2xl p-4 border border-indigo-100">
             <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-bold text-slate-800">Previewing <span id="csv-preview-count">0</span> Students Ready to Import:</span>
-              <button id="btn-confirm-csv-import" class="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition">
+              <span class="text-xs font-bold text-slate-800" data-i18n-html="csv_preview_header">Previewing <span id="csv-preview-count">0</span> Students Ready to Import:</span>
+              <button id="btn-confirm-csv-import" data-i18n="btn_confirm_csv_import" class="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition">
                 Confirm & Import to Firestore
               </button>
             </div>
@@ -467,11 +512,11 @@
               <table class="w-full text-left">
                 <thead class="bg-slate-50 text-[10px] font-bold text-slate-500 uppercase">
                   <tr>
-                    <th class="px-3 py-1.5">Roll</th>
-                    <th class="px-3 py-1.5">Name</th>
-                    <th class="px-3 py-1.5">Father</th>
-                    <th class="px-3 py-1.5">Phone</th>
-                    <th class="px-3 py-1.5">Gender</th>
+                    <th class="px-3 py-1.5" data-i18n="th_roll">Roll</th>
+                    <th class="px-3 py-1.5" data-i18n="th_name">Name</th>
+                    <th class="px-3 py-1.5" data-i18n="th_father">Father</th>
+                    <th class="px-3 py-1.5" data-i18n="th_phone">Phone</th>
+                    <th class="px-3 py-1.5" data-i18n="th_gender">Gender</th>
                   </tr>
                 </thead>
                 <tbody id="csv-preview-tbody"></tbody>
@@ -485,12 +530,12 @@
           <table class="w-full text-left text-sm">
             <thead class="bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-500 uppercase tracking-wider">
               <tr>
-                <th class="px-6 py-3.5">Roll No</th>
-                <th class="px-6 py-3.5">Student Name</th>
-                <th class="px-6 py-3.5">Father / Guardian</th>
-                <th class="px-6 py-3.5">Parent WhatsApp</th>
-                <th class="px-6 py-3.5">Gender</th>
-                <th class="px-6 py-3.5 text-right">Actions</th>
+                <th class="px-6 py-3.5" data-i18n="th_roll_no">Roll No</th>
+                <th class="px-6 py-3.5" data-i18n="th_student_name">Student Name</th>
+                <th class="px-6 py-3.5" data-i18n="th_father_guardian">Father / Guardian</th>
+                <th class="px-6 py-3.5" data-i18n="th_parent_whatsapp">Parent WhatsApp</th>
+                <th class="px-6 py-3.5" data-i18n="th_gender">Gender</th>
+                <th class="px-6 py-3.5 text-right" data-i18n="th_actions">Actions</th>
               </tr>
             </thead>
             <tbody id="table-students-body">
@@ -505,40 +550,40 @@
       <div id="admin-tab-teachers" class="admin-tab-content hidden space-y-6">
         <!-- Add Teacher Profile Form -->
         <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs">
-          <h3 class="text-sm font-bold text-slate-900 mb-4">Register New Teacher Profile</h3>
+          <h3 class="text-sm font-bold text-slate-900 mb-4" data-i18n="admin_teachers_heading">Register New Teacher Profile</h3>
           <form id="form-add-teacher" class="space-y-4">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1" for="teacher-name">Full Name</label>
-                <input type="text" id="teacher-name" required placeholder="e.g. Ms. Fatima Khan"
+                <label class="block text-xs font-bold text-slate-600 mb-1" for="teacher-name" data-i18n="lbl_teacher_name">Full Name</label>
+                <input type="text" id="teacher-name" required placeholder="e.g. Ms. Fatima Khan" data-i18n-placeholder="placeholder_teacher_name"
                        class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
               </div>
               <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1" for="teacher-email">Staff Email (Login ID)</label>
-                <input type="email" id="teacher-email" required placeholder="teacher@countryschool.edu"
+                <label class="block text-xs font-bold text-slate-600 mb-1" for="teacher-email" data-i18n="lbl_teacher_email">Staff Email (Login ID)</label>
+                <input type="email" id="teacher-email" required placeholder="teacher@countryschool.edu" data-i18n-placeholder="placeholder_teacher_email"
                        class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
               </div>
               <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1" for="teacher-uid">Firebase Auth UID</label>
-                <input type="text" id="teacher-uid" required placeholder="From Firebase Console > Users"
+                <label class="block text-xs font-bold text-slate-600 mb-1" for="teacher-uid" data-i18n="lbl_teacher_uid">Firebase Auth UID</label>
+                <input type="text" id="teacher-uid" required placeholder="From Firebase Console > Users" data-i18n-placeholder="placeholder_teacher_uid"
                        class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none font-mono">
               </div>
               <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1" for="teacher-phone">Contact Phone</label>
-                <input type="text" id="teacher-phone" placeholder="03001234567"
+                <label class="block text-xs font-bold text-slate-600 mb-1" for="teacher-phone" data-i18n="lbl_teacher_phone">Contact Phone</label>
+                <input type="text" id="teacher-phone" placeholder="03001234567" data-i18n-placeholder="placeholder_teacher_phone"
                        class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
               </div>
             </div>
-            <p class="text-[11px] text-slate-400">💡 <strong>Quick Step:</strong> First create the teacher in Firebase Console > Authentication > Users, then paste their <strong>User UID</strong> above.</p>
+            <p class="text-[11px] text-slate-400" data-i18n-html="teacher_quick_step">💡 <strong>Quick Step:</strong> First create the teacher in Firebase Console > Authentication > Users, then paste their <strong>User UID</strong> above.</p>
 
             <div>
-              <label class="block text-xs font-bold text-slate-600 mb-1.5">Assign Classes to this Teacher:</label>
+              <label class="block text-xs font-bold text-slate-600 mb-1.5" data-i18n="lbl_assign_classes">Assign Classes to this Teacher:</label>
               <div id="teacher-class-checkboxes" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
                 <!-- Checkboxes populated dynamically -->
               </div>
             </div>
 
-            <button type="submit" class="py-2.5 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition">
+            <button type="submit" data-i18n="btn_save_teacher" class="py-2.5 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition">
               + Save Teacher Profile
             </button>
           </form>
@@ -557,15 +602,15 @@
         <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 print:hidden">
           <div class="flex flex-wrap items-center gap-3">
             <div>
-              <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1" for="report-class-select">Select Class</label>
+              <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1" for="report-class-select" data-i18n="lbl_report_class">Select Class</label>
               <select id="report-class-select" class="px-4 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-xs font-bold focus:ring-2 focus:ring-indigo-100 outline-none">
               </select>
             </div>
             <div>
-              <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1" for="report-month-select">Select Month</label>
+              <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1" for="report-month-select" data-i18n="lbl_report_month">Select Month</label>
               <input type="month" id="report-month-select" class="px-4 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-xs font-bold focus:ring-2 focus:ring-indigo-100 outline-none">
             </div>
-            <button id="btn-generate-report" class="mt-4 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition">
+            <button id="btn-generate-report" data-i18n="btn_generate_report" class="mt-4 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition">
               Generate Register
             </button>
           </div>
@@ -573,7 +618,7 @@
 
         <!-- Report Results Display Container -->
         <div id="report-results-container" class="space-y-6">
-          <div class="p-12 text-center text-slate-400 bg-white rounded-3xl border border-slate-200">
+          <div class="p-12 text-center text-slate-400 bg-white rounded-3xl border border-slate-200" data-i18n="report_initial_notice">
             Select a Class and Month above, then click "Generate Register" to calculate attendance percentages and review the low-attendance radar.
           </div>
         </div>
@@ -584,20 +629,20 @@
       <div id="admin-tab-exams" class="admin-tab-content hidden space-y-6">
         <!-- Add Exam Term Form -->
         <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs">
-          <h3 class="text-sm font-bold text-slate-900 mb-4">Create New Examination Session</h3>
+          <h3 class="text-sm font-bold text-slate-900 mb-4" data-i18n="admin_terms_heading">Create New Examination Session</h3>
           <form id="form-add-term" class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
             <div>
-              <label class="block text-xs font-bold text-slate-600 mb-1" for="term-name">Term Name</label>
-              <input type="text" id="term-name" required placeholder="e.g. Mid-Term Examination 2026"
+              <label class="block text-xs font-bold text-slate-600 mb-1" for="term-name" data-i18n="lbl_term_name">Term Name</label>
+              <input type="text" id="term-name" required placeholder="e.g. Mid-Term Examination 2026" data-i18n-placeholder="placeholder_term_name"
                      class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
             </div>
             <div>
-              <label class="block text-xs font-bold text-slate-600 mb-1" for="term-academic-year">Academic Year</label>
-              <input type="text" id="term-academic-year" value="2026-2027" placeholder="e.g. 2026-2027"
+              <label class="block text-xs font-bold text-slate-600 mb-1" for="term-academic-year" data-i18n="lbl_term_year">Academic Year</label>
+              <input type="text" id="term-academic-year" value="2026-2027" placeholder="e.g. 2026-2027" data-i18n-placeholder="placeholder_term_year"
                      class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
             </div>
             <div>
-              <button type="submit" class="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition">
+              <button type="submit" data-i18n="btn_create_term" class="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition">
                 + Create Exam Term (Draft)
               </button>
             </div>
@@ -609,11 +654,11 @@
           <table class="w-full text-left text-sm">
             <thead class="bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-500 uppercase tracking-wider">
               <tr>
-                <th class="px-6 py-3.5">Term Name</th>
-                <th class="px-6 py-3.5">Academic Year</th>
-                <th class="px-6 py-3.5">Status</th>
-                <th class="px-6 py-3.5">Term ID</th>
-                <th class="px-6 py-3.5 text-right">Actions</th>
+                <th class="px-6 py-3.5" data-i18n="th_term_name">Term Name</th>
+                <th class="px-6 py-3.5" data-i18n="th_academic_year">Academic Year</th>
+                <th class="px-6 py-3.5" data-i18n="th_status">Status</th>
+                <th class="px-6 py-3.5" data-i18n="th_term_id">Term ID</th>
+                <th class="px-6 py-3.5 text-right" data-i18n="th_actions">Actions</th>
               </tr>
             </thead>
             <tbody id="table-terms-body"></tbody>
@@ -624,11 +669,11 @@
         <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4">
           <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h3 class="text-sm font-bold text-slate-900">Class Subjects Curriculum & Max Marks</h3>
-              <p class="text-xs text-slate-400">Configure subjects and grading parameters per class</p>
+              <h3 class="text-sm font-bold text-slate-900" data-i18n="curriculum_heading">Class Subjects Curriculum & Max Marks</h3>
+              <p class="text-xs text-slate-400" data-i18n="curriculum_subtitle">Configure subjects and grading parameters per class</p>
             </div>
             <div class="flex items-center gap-2">
-              <label class="text-xs font-bold text-slate-600" for="config-subject-class">Class:</label>
+              <label class="text-xs font-bold text-slate-600" for="config-subject-class" data-i18n="lbl_curriculum_class">Class:</label>
               <select id="config-subject-class" class="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold outline-none bg-slate-50"></select>
             </div>
           </div>
@@ -636,10 +681,10 @@
           <form id="form-save-class-subjects" class="space-y-3">
             <div id="class-subjects-list" class="space-y-2"></div>
             <div class="flex items-center justify-between pt-2">
-              <button type="button" onclick="window.addSubjectRow()" class="px-3 py-1.5 rounded-xl border border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-xs font-bold transition">
+              <button type="button" onclick="window.addSubjectRow()" data-i18n="btn_add_subject" class="px-3 py-1.5 rounded-xl border border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-xs font-bold transition">
                 + Add Subject
               </button>
-              <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition">
+              <button type="submit" data-i18n="btn_save_subjects" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition">
                 Save Class Subjects
               </button>
             </div>
@@ -651,27 +696,27 @@
       <div id="admin-tab-parents" class="admin-tab-content hidden space-y-6">
         <!-- Add Parent Account Form -->
         <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs">
-          <h3 class="text-sm font-bold text-slate-900 mb-4">Register New Parent Account</h3>
+          <h3 class="text-sm font-bold text-slate-900 mb-4" data-i18n="admin_parents_heading">Register New Parent Account</h3>
           <form id="form-add-parent" class="space-y-4">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1" for="parent-name">Parent Full Name</label>
-                <input type="text" id="parent-name" required placeholder="e.g. Mr. Tariq Mahmood"
+                <label class="block text-xs font-bold text-slate-600 mb-1" for="parent-name" data-i18n="lbl_parent_name">Parent Full Name</label>
+                <input type="text" id="parent-name" required placeholder="e.g. Mr. Tariq Mahmood" data-i18n-placeholder="placeholder_parent_name"
                        class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
               </div>
               <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1" for="parent-login-id">Parent / Student ID</label>
-                <input type="text" id="parent-login-id" required placeholder="e.g. 1001 or P-1001"
+                <label class="block text-xs font-bold text-slate-600 mb-1" for="parent-login-id" data-i18n="lbl_parent_login_id">Parent / Student ID</label>
+                <input type="text" id="parent-login-id" required placeholder="e.g. 1001 or P-1001" data-i18n-placeholder="placeholder_parent_login_id"
                        class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
               </div>
               <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1" for="parent-uid">Firebase Auth UID</label>
-                <input type="text" id="parent-uid" required placeholder="From Firebase Console > Users"
+                <label class="block text-xs font-bold text-slate-600 mb-1" for="parent-uid" data-i18n="lbl_parent_uid">Firebase Auth UID</label>
+                <input type="text" id="parent-uid" required placeholder="From Firebase Console > Users" data-i18n-placeholder="placeholder_parent_uid"
                        class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none font-mono">
               </div>
               <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1" for="parent-phone">Parent Phone</label>
-                <input type="text" id="parent-phone" placeholder="03001234567"
+                <label class="block text-xs font-bold text-slate-600 mb-1" for="parent-phone" data-i18n="lbl_parent_phone">Parent Phone</label>
+                <input type="text" id="parent-phone" placeholder="03001234567" data-i18n-placeholder="placeholder_parent_phone"
                        class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 outline-none">
               </div>
             </div>
@@ -679,7 +724,7 @@
             <!-- Student Selection for Linking -->
             <div>
               <div class="flex items-center justify-between mb-2">
-                <label class="text-xs font-bold text-slate-700">Select Children to Link to this Account:</label>
+                <label class="text-xs font-bold text-slate-700" data-i18n="lbl_select_children">Select Children to Link to this Account:</label>
                 <select id="parent-link-class-filter" class="px-2.5 py-1 text-xs border border-slate-200 rounded-lg bg-slate-50 outline-none"></select>
               </div>
               <div id="parent-student-checkboxes" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-2 bg-slate-50/50 rounded-2xl border border-slate-200">
@@ -687,7 +732,7 @@
               </div>
             </div>
 
-            <button type="submit" class="py-2.5 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition">
+            <button type="submit" data-i18n="btn_save_parent" class="py-2.5 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition">
               + Save Parent Account
             </button>
           </form>
@@ -709,8 +754,8 @@
         <div class="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-4">
           <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
         </div>
-        <h3 class="text-lg font-bold text-slate-800">No Student Records Linked</h3>
-        <p class="text-xs text-slate-500 mt-2">Your parent account is registered, but no student records have been linked yet. Please notify the School Administration.</p>
+        <h3 class="text-lg font-bold text-slate-800" data-i18n="parent_no_children_title">No Student Records Linked</h3>
+        <p class="text-xs text-slate-500 mt-2" data-i18n="parent_no_children_desc">Your parent account is registered, but no student records have been linked yet. Please notify the School Administration.</p>
       </div>
 
       <!-- Main Section -->
@@ -730,15 +775,15 @@
                 </div>
                 <div>
                   <h3 id="parent-child-name" class="font-black text-lg text-slate-900 leading-tight">Student Name</h3>
-                  <p class="text-xs text-slate-500 font-medium">Roll No: <span id="parent-child-roll" class="font-bold text-slate-700">1001</span></p>
+                  <p class="text-xs text-slate-500 font-medium"><span data-i18n="lbl_parent_roll_no">Roll No:</span> <span id="parent-child-roll" class="font-bold text-slate-700">1001</span></p>
                 </div>
               </div>
               <div class="space-y-2 text-xs border-t border-slate-100 pt-3">
-                <div class="flex justify-between"><span class="text-slate-400">Class:</span> <span id="parent-child-class" class="font-bold text-slate-800">Grade 10 - A</span></div>
-                <div class="flex justify-between"><span class="text-slate-400">Father/Guardian:</span> <span id="parent-child-father" class="font-bold text-slate-800">Tariq Mahmood</span></div>
+                <div class="flex justify-between"><span class="text-slate-400" data-i18n="lbl_parent_class">Class:</span> <span id="parent-child-class" class="font-bold text-slate-800">Grade 10 - A</span></div>
+                <div class="flex justify-between"><span class="text-slate-400" data-i18n="lbl_parent_father">Father/Guardian:</span> <span id="parent-child-father" class="font-bold text-slate-800">Tariq Mahmood</span></div>
               </div>
             </div>
-            <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400">
+            <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400" data-i18n="parent_campus_tag">
               The Country School ShahJamal Campus
             </div>
           </div>
@@ -747,11 +792,11 @@
           <div class="md:col-span-2 bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4">
             <div class="flex items-center justify-between">
               <div>
-                <h4 class="font-black text-base text-slate-900">Attendance Summary</h4>
-                <p class="text-xs text-slate-500">Academic Year Cumulative Attendance</p>
+                <h4 class="font-black text-base text-slate-900" data-i18n="parent_att_summary_title">Attendance Summary</h4>
+                <p class="text-xs text-slate-500" data-i18n="parent_att_summary_sub">Academic Year Cumulative Attendance</p>
               </div>
               <div class="text-right">
-                <span class="text-[10px] uppercase font-bold text-slate-400 block">Attendance Rate</span>
+                <span class="text-[10px] uppercase font-bold text-slate-400 block" data-i18n="parent_att_rate">Attendance Rate</span>
                 <span id="parent-att-percent" class="font-black text-xl text-indigo-600">0%</span>
               </div>
             </div>
@@ -760,19 +805,19 @@
 
             <div class="grid grid-cols-4 gap-2 text-center">
               <div class="p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                <span class="block text-[10px] font-bold uppercase text-slate-400">Working Days</span>
+                <span class="block text-[10px] font-bold uppercase text-slate-400" data-i18n="parent_stat_working_days">Working Days</span>
                 <span id="parent-att-total" class="font-black text-base text-slate-800">0</span>
               </div>
               <div class="p-3 rounded-2xl bg-emerald-50 border border-emerald-100">
-                <span class="block text-[10px] font-bold uppercase text-emerald-600">Present (P)</span>
+                <span class="block text-[10px] font-bold uppercase text-emerald-600" data-i18n="parent_stat_present">Present (P)</span>
                 <span id="parent-att-present" class="font-black text-base text-emerald-700">0</span>
               </div>
               <div class="p-3 rounded-2xl bg-rose-50 border border-rose-100">
-                <span class="block text-[10px] font-bold uppercase text-rose-600">Absent (A)</span>
+                <span class="block text-[10px] font-bold uppercase text-rose-600" data-i18n="parent_stat_absent">Absent (A)</span>
                 <span id="parent-att-absent" class="font-black text-base text-rose-700">0</span>
               </div>
               <div class="p-3 rounded-2xl bg-amber-50 border border-amber-100">
-                <span class="block text-[10px] font-bold uppercase text-amber-600">Late (L)</span>
+                <span class="block text-[10px] font-bold uppercase text-amber-600" data-i18n="parent_stat_late">Late (L)</span>
                 <span id="parent-att-late" class="font-black text-base text-amber-700">0</span>
               </div>
             </div>
@@ -784,7 +829,7 @@
           <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 print:hidden">
             <div class="flex items-center gap-3">
               <div>
-                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1" for="parent-term-select">Examination Session</label>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1" for="parent-term-select" data-i18n="lbl_parent_exam_session">Examination Session</label>
                 <select id="parent-term-select" class="px-4 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-xs font-bold focus:ring-2 focus:ring-indigo-100 outline-none">
                 </select>
               </div>
@@ -792,7 +837,7 @@
             <button id="btn-print-parent-report" type="button"
                     class="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-sm transition inline-flex items-center gap-2">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-              Print / Save PDF Report Card
+              <span data-i18n="btn_print_report">Print / Save PDF Report Card</span>
             </button>
           </div>
 
@@ -813,8 +858,8 @@
     <div class="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-200">
       <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
         <div>
-          <h3 id="modal-admin-attendance-title" class="font-bold text-base text-slate-900">Class Attendance Override</h3>
-          <p class="text-xs text-indigo-600 font-semibold">Administrator Master Edit</p>
+          <h3 id="modal-admin-attendance-title" class="font-bold text-base text-slate-900" data-i18n="modal_attendance_title">Class Attendance Override</h3>
+          <p class="text-xs text-indigo-600 font-semibold" data-i18n="modal_attendance_sub">Administrator Master Edit</p>
         </div>
         <button onclick="document.getElementById('modal-admin-attendance').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -831,6 +876,579 @@
   <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
 
   <!-- =====================================================================
+       BILINGUAL (ENGLISH & URDU) TRANSLATION ENGINE & CONTROLLER
+       ===================================================================== -->
+  <script>
+    (function() {
+      // 1. Translation Dictionaries
+      const I18N = {
+        en: {
+          header_school_name: 'The Country School',
+          header_campus_title: 'ShahJamal Campus • Attendance',
+          badge_online: 'Online',
+          badge_offline: 'Offline (IndexedDB Active)',
+          header_user_default: 'Admin User',
+          role_admin: 'Admin',
+          role_teacher: 'Teacher',
+          role_parent: 'Parent',
+          btn_signout: 'Sign Out',
+          loading_text: 'Connecting to Attendance System...',
+          firebase_warning: '⚠️ Configuration Notice: Firebase credentials are currently set to placeholders in js/firebase-config.js. Please paste your Firebase project keys to enable real-time cloud sync.',
+
+          login_portal_title: 'Staff & Parent Portal',
+          login_portal_subtitle: 'Students, Parents, Teachers & Administrators',
+          label_login_email: 'Student ID / Staff Email',
+          placeholder_login_email: 'e.g. 1001 or staff@countryschool.edu',
+          login_email_hint: '💡 <strong>Parents:</strong> Enter your child\'s Roll/Student ID (e.g. <strong class="text-slate-600">1001</strong>). <strong>Staff:</strong> Enter your school email.',
+          label_login_password: 'Password',
+          placeholder_login_password: '••••••••',
+          btn_login_submit: 'Sign In to Portal',
+          login_footer: 'Powered by Firebase Spark Tier & GitHub Pages • Zero Hosting Costs',
+
+          bootstrap_title: 'Fresh Setup Detected: Initialize First Administrator',
+          bootstrap_desc: 'No existing admin was found in Firestore. Initialize this account as the Master School Administrator:',
+          placeholder_bootstrap_name: 'Full Administrator Name (e.g. Principal / IT In-charge)',
+          btn_bootstrap_submit: 'Initialize Master Administrator Profile',
+
+          teacher_tab_attendance: 'Daily Attendance Roll Call',
+          teacher_tab_marks: 'Exam Marks Entry',
+          teacher_no_classes_title: 'No Classes Assigned',
+          teacher_no_classes_desc: 'Your teacher account does not have any classes linked yet. Please notify the School Administrator to assign your classes.',
+          lbl_select_class: 'Select Class',
+          lbl_attendance_date: 'Attendance Date',
+          btn_mark_all_present: 'Mark All Present',
+          btn_save_attendance: 'Save Attendance',
+          stat_total_enrolled: 'Total Enrolled',
+          stat_present_p: 'Present (P)',
+          stat_absent_a: 'Absent (A)',
+          stat_late_l: 'Late (L)',
+          stat_excused_e: 'Excused (E)',
+          lbl_select_exam_term: 'Select Exam Term',
+          lbl_select_assigned_class: 'Select Assigned Class',
+          btn_save_all_marks: 'Save All Marks',
+
+          admin_nav_overview: 'Daily Overview',
+          admin_nav_classes: 'Classes',
+          admin_nav_students: 'Students & CSV Import',
+          admin_nav_teachers: 'Teacher Profiles',
+          admin_nav_reports: 'Monthly Reports & Radar',
+          admin_nav_exams: 'Exam Terms & Subjects',
+          admin_nav_parents: 'Parent Accounts',
+
+          lbl_choose_date: 'Choose Date',
+          btn_refresh: 'Refresh',
+          kpi_school_attendance: 'School Attendance',
+          kpi_present: 'Present',
+          kpi_absent: 'Absent',
+          kpi_classes_marked: 'Classes Marked',
+
+          admin_classes_heading: 'Register New Class / Section',
+          lbl_class_name: 'Class Display Name',
+          placeholder_class_name: 'e.g. Grade 10 - Section A',
+          lbl_class_grade: 'Grade / Year',
+          placeholder_class_grade: 'e.g. 10',
+          lbl_class_section: 'Section',
+          placeholder_class_section: 'e.g. A',
+          lbl_academic_year: 'Academic Year',
+          placeholder_academic_year: 'e.g. 2026-2027',
+          btn_create_class: '+ Create Class',
+          th_class_name: 'Class Name',
+          th_grade: 'Grade',
+          th_section: 'Section',
+          th_students: 'Students',
+          th_actions: 'Actions',
+
+          lbl_filter_class: 'Filter Class:',
+          note_scoped_queries: 'Scoped queries guarantee zero-cost reads (max 30-40 per class)',
+          admin_students_heading: '+ Add Individual Student',
+          lbl_student_class: 'Class',
+          lbl_student_roll: 'Roll No',
+          placeholder_student_roll: 'e.g. 101',
+          lbl_student_name: 'Student Name',
+          placeholder_student_name: 'Full Name',
+          lbl_student_father: 'Father / Guardian',
+          placeholder_student_father: 'Father Name',
+          lbl_student_phone: 'WhatsApp Phone',
+          placeholder_student_phone: '03001234567',
+          btn_save_student: 'Save Student',
+          bulk_importer_title: 'Bulk Student CSV Importer (Upload Entire Classes at Once)',
+          bulk_importer_desc: 'Upload a CSV file containing columns: <code class="font-bold bg-white/70 px-1.5 py-0.5 rounded text-indigo-800">RollNo, Name, FatherName, ParentPhone, Gender</code>. The system batches records in groups of 400 to safely stay well within Firestore limits.',
+          csv_preview_header: 'Previewing <span id="csv-preview-count">0</span> Students Ready to Import:',
+          btn_confirm_csv_import: 'Confirm & Import to Firestore',
+          th_roll: 'Roll',
+          th_name: 'Name',
+          th_father: 'Father',
+          th_phone: 'Phone',
+          th_gender: 'Gender',
+          th_roll_no: 'Roll No',
+          th_student_name: 'Student Name',
+          th_father_guardian: 'Father / Guardian',
+          th_parent_whatsapp: 'Parent WhatsApp',
+
+          admin_teachers_heading: 'Register New Teacher Profile',
+          lbl_teacher_name: 'Full Name',
+          placeholder_teacher_name: 'e.g. Ms. Fatima Khan',
+          lbl_teacher_email: 'Staff Email (Login ID)',
+          placeholder_teacher_email: 'teacher@countryschool.edu',
+          lbl_teacher_uid: 'Firebase Auth UID',
+          placeholder_teacher_uid: 'From Firebase Console > Users',
+          lbl_teacher_phone: 'Contact Phone',
+          placeholder_teacher_phone: '03001234567',
+          teacher_quick_step: '💡 <strong>Quick Step:</strong> First create the teacher in Firebase Console > Authentication > Users, then paste their <strong>User UID</strong> above.',
+          lbl_assign_classes: 'Assign Classes to this Teacher:',
+          btn_save_teacher: '+ Save Teacher Profile',
+
+          lbl_report_class: 'Select Class',
+          lbl_report_month: 'Select Month',
+          btn_generate_report: 'Generate Register',
+          report_initial_notice: 'Select a Class and Month above, then click "Generate Register" to calculate attendance percentages and review the low-attendance radar.',
+
+          admin_terms_heading: 'Create New Examination Session',
+          lbl_term_name: 'Term Name',
+          placeholder_term_name: 'e.g. Mid-Term Examination 2026',
+          lbl_term_year: 'Academic Year',
+          placeholder_term_year: 'e.g. 2026-2027',
+          btn_create_term: '+ Create Exam Term (Draft)',
+          th_term_name: 'Term Name',
+          th_academic_year: 'Academic Year',
+          th_status: 'Status',
+          th_term_id: 'Term ID',
+          curriculum_heading: 'Class Subjects Curriculum & Max Marks',
+          curriculum_subtitle: 'Configure subjects and grading parameters per class',
+          lbl_curriculum_class: 'Class:',
+          btn_add_subject: '+ Add Subject',
+          btn_save_subjects: 'Save Class Subjects',
+
+          admin_parents_heading: 'Register New Parent Account',
+          lbl_parent_name: 'Parent Full Name',
+          placeholder_parent_name: 'e.g. Mr. Tariq Mahmood',
+          lbl_parent_login_id: 'Parent / Student ID',
+          placeholder_parent_login_id: 'e.g. 1001 or P-1001',
+          lbl_parent_uid: 'Firebase Auth UID',
+          placeholder_parent_uid: 'From Firebase Console > Users',
+          lbl_parent_phone: 'Parent Phone',
+          placeholder_parent_phone: '03001234567',
+          lbl_select_children: 'Select Children to Link to this Account:',
+          btn_save_parent: '+ Save Parent Account',
+
+          parent_no_children_title: 'No Student Records Linked',
+          parent_no_children_desc: 'Your parent account is registered, but no student records have been linked yet. Please notify the School Administration.',
+          lbl_parent_roll_no: 'Roll No:',
+          lbl_parent_class: 'Class:',
+          lbl_parent_father: 'Father/Guardian:',
+          parent_campus_tag: 'The Country School ShahJamal Campus',
+          parent_att_summary_title: 'Attendance Summary',
+          parent_att_summary_sub: 'Academic Year Cumulative Attendance',
+          parent_att_rate: 'Attendance Rate',
+          parent_stat_working_days: 'Working Days',
+          parent_stat_present: 'Present (P)',
+          parent_stat_absent: 'Absent (A)',
+          parent_stat_late: 'Late (L)',
+          lbl_parent_exam_session: 'Examination Session',
+          btn_print_report: 'Print / Save PDF Report Card',
+
+          modal_attendance_title: 'Class Attendance Override',
+          modal_attendance_sub: 'Administrator Master Edit'
+        },
+
+        ur: {
+          header_school_name: 'دی کنٹری اسکول',
+          header_campus_title: 'شاہ جمال کیمپس • حاضری نظام',
+          badge_online: 'آن لائن',
+          badge_offline: 'آف لائن (لوکل ڈیٹا فعال)',
+          header_user_default: 'ایڈمن صارف',
+          role_admin: 'ایڈمن',
+          role_teacher: 'استاد',
+          role_parent: 'والدین',
+          btn_signout: 'لاگ آؤٹ',
+          loading_text: 'حاضری سسٹم سے رابطہ ہو رہا ہے...',
+          firebase_warning: '⚠️ ضروری اطلاع: فائر بیس کی ترتیبات ابھی مکمل نہیں ہیں۔ براہ کرم رئیل ٹائم کلاؤڈ سنک کے لیے کیز درج کریں۔',
+
+          login_portal_title: 'اسٹاف اور پیرنٹ پورٹل',
+          login_portal_subtitle: 'طلباء، والدین، اساتذہ اور ایڈمنسٹریٹرز',
+          label_login_email: 'طالب علم آئی ڈی / اسٹاف ای میل',
+          placeholder_login_email: 'مثلاً 1001 یا staff@countryschool.edu',
+          login_email_hint: '💡 <strong>والدین:</strong> اپنے بچے کا رول نمبر / اسٹوڈنٹ آئی ڈی درج کریں (مثلاً <strong class="text-slate-600">1001</strong>)۔ <strong>اسٹاف:</strong> اپنا اسکول ای میل درج کریں۔',
+          label_login_password: 'پاس ورڈ',
+          placeholder_login_password: '••••••••',
+          btn_login_submit: 'پورٹل میں لاگ ان کریں',
+          login_footer: 'فائر بیس اسپارک اور گٹ ہب پیجز کی سہولت • بغیر کسی اضافی اخراجات کے',
+
+          bootstrap_title: 'نیا سیٹ اپ: پہلے ایڈمنسٹریٹر کا اندراج کریں',
+          bootstrap_desc: 'فائر بیس میں کوئی ایڈمن موجود نہیں ہے۔ اس اکاؤنٹ کو ماسٹر اسکول ایڈمنسٹریٹر بنائیں:',
+          placeholder_bootstrap_name: 'ایڈمنسٹریٹر کا پورا نام (مثلاً پرنسپل / آئی ٹی انچارج)',
+          btn_bootstrap_submit: 'ماسٹر ایڈمنسٹریٹر پروفائل بنائیں',
+
+          teacher_tab_attendance: 'روزانہ حاضری رول کال',
+          teacher_tab_marks: 'امتحانی نمبرات کا اندراج',
+          teacher_no_classes_title: 'کوئی کلاس تفویض نہیں ہوئی',
+          teacher_no_classes_desc: 'آپ کے استاد اکاؤنٹ سے ابھی کوئی کلاس وابستہ نہیں ہے۔ براہ کرم اسکول ایڈمنسٹریٹر سے رابطہ کریں۔',
+          lbl_select_class: 'کلاس منتخب کریں',
+          lbl_attendance_date: 'حاضری کی تاریخ',
+          btn_mark_all_present: 'سب کو حاضر مارک کریں',
+          btn_save_attendance: 'حاضری محفوظ کریں',
+          stat_total_enrolled: 'کل داخل طلباء',
+          stat_present_p: 'حاضر (P)',
+          stat_absent_a: 'غیر حاضر (A)',
+          stat_late_l: 'دیر سے (L)',
+          stat_excused_e: 'رخصت (E)',
+          lbl_select_exam_term: 'امتحانی ٹرم منتخب کریں',
+          lbl_select_assigned_class: 'تفویض کردہ کلاس منتخب کریں',
+          btn_save_all_marks: 'تمام نمبرات محفوظ کریں',
+
+          admin_nav_overview: 'روزانہ جائزہ',
+          admin_nav_classes: 'کلاسز',
+          admin_nav_students: 'طلباء اور سی ایس وی درآمد',
+          admin_nav_teachers: 'اساتذہ کے پروفائلز',
+          admin_nav_reports: 'ماہانہ رپورٹس اور ریڈار',
+          admin_nav_exams: 'امتحانی ٹرمز اور مضامین',
+          admin_nav_parents: 'والدین کے اکاؤنٹس',
+
+          lbl_choose_date: 'تاریخ منتخب کریں',
+          btn_refresh: 'تازہ کریں',
+          kpi_school_attendance: 'اسکول حاضری',
+          kpi_present: 'حاضر',
+          kpi_absent: 'غیر حاضر',
+          kpi_classes_marked: 'مارک شدہ کلاسز',
+
+          admin_classes_heading: 'نئی کلاس / سیکشن رجسٹر کریں',
+          lbl_class_name: 'کلاس کا نام',
+          placeholder_class_name: 'مثلاً دسویں جماعت - سیکشن اے',
+          lbl_class_grade: 'جماعت / سال',
+          placeholder_class_grade: 'مثلاً 10',
+          lbl_class_section: 'سیکشن',
+          placeholder_class_section: 'مثلاً اے',
+          lbl_academic_year: 'تعلیمی سال',
+          placeholder_academic_year: 'مثلاً 2026-2027',
+          btn_create_class: '+ نئی کلاس بنائیں',
+          th_class_name: 'کلاس کا نام',
+          th_grade: 'جماعت',
+          th_section: 'سیکشن',
+          th_students: 'طلباء',
+          th_actions: 'اقدامات',
+
+          lbl_filter_class: 'کلاس منتخب کریں:',
+          note_scoped_queries: 'معلومات: تیز رفتار کارکردگی اور ڈیٹا کا محفوظ انتظام',
+          admin_students_heading: '+ نیا طالب علم شامل کریں',
+          lbl_student_class: 'کلاس',
+          lbl_student_roll: 'رول نمبر',
+          placeholder_student_roll: 'مثلاً 101',
+          lbl_student_name: 'طالب علم کا نام',
+          placeholder_student_name: 'پورا نام',
+          lbl_student_father: 'والد / سرپرست',
+          placeholder_student_father: 'والد کا نام',
+          lbl_student_phone: 'واٹس ایپ فون',
+          placeholder_student_phone: '03001234567',
+          btn_save_student: 'طالب علم محفوظ کریں',
+          bulk_importer_title: 'طلباء کا بلک سی ایس وی امپورٹر (پوری کلاس بیک وقت اپ لوڈ کریں)',
+          bulk_importer_desc: 'ایسی سی ایس وی فائل اپ لوڈ کریں جس کے کالم ہوں: <code class="font-bold bg-white/70 px-1.5 py-0.5 rounded text-indigo-800">RollNo, Name, FatherName, ParentPhone, Gender</code>۔ سسٹم تمام ریکارڈز بحفاظت امپورٹ کرے گا۔',
+          csv_preview_header: 'درآمد کے لیے تیار <span id="csv-preview-count">0</span> طلباء کا پیش نظارہ:',
+          btn_confirm_csv_import: 'تصدیق کریں اور فائر بیس میں درآمد کریں',
+          th_roll: 'رول نمبر',
+          th_name: 'نام',
+          th_father: 'والد',
+          th_phone: 'فون',
+          th_gender: 'جنس',
+          th_roll_no: 'رول نمبر',
+          th_student_name: 'طالب علم کا نام',
+          th_father_guardian: 'والد / سرپرست',
+          th_parent_whatsapp: 'والدین کا واٹس ایپ',
+
+          admin_teachers_heading: 'نیا استاد پروفائل رجسٹر کریں',
+          lbl_teacher_name: 'پورا نام',
+          placeholder_teacher_name: 'مثلاً محترمہ فاطمہ خان',
+          lbl_teacher_email: 'اسٹاف ای میل (لاگ ان آئی ڈی)',
+          placeholder_teacher_email: 'teacher@countryschool.edu',
+          lbl_teacher_uid: 'فائر بیس اوتھ UID',
+          placeholder_teacher_uid: 'فائر بیس کنسول سے حاصل کریں',
+          lbl_teacher_phone: 'رابطہ نمبر',
+          placeholder_teacher_phone: '03001234567',
+          teacher_quick_step: '💡 <strong>رہنمائی:</strong> پہلے فائر بیس کنسول میں استاد کا ای میل بنائیں، پھر ان کا <strong>User UID</strong> یہاں درج کریں۔',
+          lbl_assign_classes: 'اس استاد کو کلاسز تفویض کریں:',
+          btn_save_teacher: '+ استاد کا پروفائل محفوظ کریں',
+
+          lbl_report_class: 'کلاس منتخب کریں',
+          lbl_report_month: 'مہینہ منتخب کریں',
+          btn_generate_report: 'حاضری رجسٹر تیار کریں',
+          report_initial_notice: 'اوپر کلاس اور مہینہ منتخب کریں، پھر حاضری کی شرح اور کم حاضری والے طلباء کا ریڈار دیکھنے کے لیے "حاضری رجسٹر تیار کریں" پر کلک کریں۔',
+
+          admin_terms_heading: 'نیا امتحانی سیشن بنائیں',
+          lbl_term_name: 'امتحانی ٹرم کا نام',
+          placeholder_term_name: 'مثلاً مڈ ٹرم امتحانات 2026',
+          lbl_term_year: 'تعلیمی سال',
+          placeholder_term_year: 'مثلاً 2026-2027',
+          btn_create_term: '+ امتحانی ٹرم بنائیں (ڈرافٹ)',
+          th_term_name: 'ٹرم کا نام',
+          th_academic_year: 'تعلیمی سال',
+          th_status: 'حیثیت',
+          th_term_id: 'ٹرم آئی ڈی',
+          curriculum_heading: 'کلاس نصاب کے مضامین اور کل نمبرات',
+          curriculum_subtitle: 'ہر کلاس کے مضامین اور گریڈنگ کے معیار کی ترتیب',
+          lbl_curriculum_class: 'کلاس:',
+          btn_add_subject: '+ مضمون شامل کریں',
+          btn_save_subjects: 'کلاس کے مضامین محفوظ کریں',
+
+          admin_parents_heading: 'نیا پیرنٹ اکاؤنٹ رجسٹر کریں',
+          lbl_parent_name: 'والدین کا پورا نام',
+          placeholder_parent_name: 'مثلاً جناب طارق محمود',
+          lbl_parent_login_id: 'پیرنٹ / اسٹوڈنٹ آئی ڈی',
+          placeholder_parent_login_id: 'مثلاً 1001 یا P-1001',
+          lbl_parent_uid: 'فائر بیس اوتھ UID',
+          placeholder_parent_uid: 'فائر بیس کنسول سے حاصل کریں',
+          lbl_parent_phone: 'والدین کا فون',
+          placeholder_parent_phone: '03001234567',
+          lbl_select_children: 'اس اکاؤنٹ سے منسلک کرنے کے لیے بچے منتخب کریں:',
+          btn_save_parent: '+ پیرنٹ اکاؤنٹ محفوظ کریں',
+
+          parent_no_children_title: 'طالب علم کا کوئی ریکارڈ منسلک نہیں',
+          parent_no_children_desc: 'آپ کا اکاؤنٹ رجسٹرڈ ہے لیکن کسی طالب علم کا ریکارڈ منسلک نہیں ملا۔ براہ کرم اسکول انتظامیہ سے رابطہ کریں۔',
+          lbl_parent_roll_no: 'رول نمبر:',
+          lbl_parent_class: 'کلاس:',
+          lbl_parent_father: 'والد / سرپرست:',
+          parent_campus_tag: 'دی کنٹری اسکول شاہ جمال کیمپس',
+          parent_att_summary_title: 'حاضری کا خلاصہ',
+          parent_att_summary_sub: 'تعلیمی سال کی مجموعی حاضری',
+          parent_att_rate: 'حاضری کی شرح',
+          parent_stat_working_days: 'تعلیمی دن',
+          parent_stat_present: 'حاضر (P)',
+          parent_stat_absent: 'غیر حاضر (A)',
+          parent_stat_late: 'دیر سے (L)',
+          lbl_parent_exam_session: 'امتحانی سیشن',
+          btn_print_report: 'پرنٹ / پی ڈی ایف رپورٹ کارڈ محفوظ کریں',
+
+          modal_attendance_title: 'کلاس حاضری میں ترمیم',
+          modal_attendance_sub: 'ایڈمنسٹریٹر ماسٹر ایڈیٹ'
+        }
+      };
+
+      // 2. Dynamic phrases dictionary for content rendered via JS
+      const DYNAMIC_DICT = {
+        'Review / Edit Attendance': 'حاضری دیکھیں / ترمیم کریں',
+        'Mark Attendance (Admin Override)': 'حاضری لگائیں (ایڈمن)',
+        'Mark Attendance': 'حاضری لگائیں',
+        'Save Attendance': 'حاضری محفوظ کریں',
+        'Save All Marks': 'تمام نمبرات محفوظ کریں',
+        'Save Marks': 'نمبرات محفوظ کریں',
+        'Mark All Present': 'سب کو حاضر مارک کریں',
+        'Marked': 'مارک شدہ',
+        'Not Marked': 'مارک نہیں ہوئی',
+        'Not Marked Yet': 'ابھی مارک نہیں ہوئی',
+        'Attendance Rate': 'حاضری کی شرح',
+        'School Attendance': 'اسکول حاضری',
+        'Classes Marked': 'مارک شدہ کلاسز',
+        'Enrolled': 'داخل طلباء',
+        'Pres': 'حاضر',
+        'Abs': 'غیر حاضر',
+        'Late': 'دیر سے',
+        'Exc': 'رخصت',
+        'Present': 'حاضر',
+        'Absent': 'غیر حاضر',
+        'Excused': 'رخصت',
+        'Edit': 'ترمیم',
+        'Delete': 'حذف',
+        'PASS': 'پاس',
+        'FAIL': 'فیل',
+        'Pass': 'پاس',
+        'Fail': 'فیل',
+        'Draft': 'ڈرافٹ',
+        'Published': 'شائع شدہ',
+        'Grand Total': 'کل نمبرات',
+        'Result Status': 'نتیجے کی حیثیت',
+        'Overall Grade': 'مجموعی گریڈ',
+        'Subject': 'مضمون',
+        'Max Marks': 'کل نمبر',
+        'Passing': 'پاسنگ',
+        'Obtained Marks': 'حاصل کردہ نمبر',
+        'Grade': 'گریڈ',
+        'Status': 'حیثیت',
+        'Class Teacher': 'کلاس ٹیچر',
+        'Controller of Exams': 'کنٹرولر امتحانات',
+        'Principal Signature': 'دستخط پرنسپل',
+        'Teacher\'s Observations & Remarks:': 'استاد کے تاثرات اور ریمارکس:',
+        'Send WhatsApp Absence Alert to Parent': 'والدین کو غیر حاضری کا واٹس ایپ پیغام بھیجیں',
+        '-- Select Class --': '-- کلاس منتخب کریں --',
+        '-- Choose Class --': '-- کلاس منتخب کریں --',
+        '-- Select Target Class --': '-- کلاس منتخب کریں --',
+        '-- Select Exam Term --': '-- امتحانی ٹرم منتخب کریں --',
+        'No classes registered yet. Create your first class above.': 'ابھی تک کوئی کلاس رجسٹرڈ نہیں ہے۔ اوپر نئی کلاس بنائیں۔',
+        'No students found in this class. Add individually or upload CSV above.': 'اس کلاس میں کوئی طالب علم نہیں ملا۔ انفرادی شامل کریں یا سی ایس وی اپ لوڈ کریں۔',
+        'Please select a class from the dropdown above to view students.': 'طلباء دیکھنے کے لیے اوپر ڈراپ ڈاؤن سے کلاس منتخب کریں۔',
+        'No teacher profiles found. Add teachers above to assign classes.': 'کوئی استاد پروفائل نہیں ملا۔ کلاسز تفویض کرنے کے لیے اوپر استاد شامل کریں۔',
+        'No exam terms created yet': 'ابھی تک کوئی امتحانی ٹرم نہیں بنی',
+        'No active students found in this section.': 'اس سیکشن میں کوئی فعال طالب علم موجود نہیں ہے۔',
+        'Students Enrolled': 'داخل طلباء',
+        'Children:': 'بچے:',
+        'Admin': 'ایڈمن',
+        'Teacher': 'استاد',
+        'Parent': 'والدین',
+        'Sign Out': 'لاگ آؤٹ'
+      };
+
+      // 3. State Management
+      let currentLang = localStorage.getItem('tcs_lang') || 'en';
+
+      window.I18N = I18N;
+      window.t = function(key, fallback = '') {
+        if (I18N[currentLang] && I18N[currentLang][key]) {
+          return I18N[currentLang][key];
+        }
+        if (I18N.en && I18N.en[key]) {
+          return I18N.en[key];
+        }
+        return fallback || key;
+      };
+      window.getLanguage = () => currentLang;
+
+      let isTranslating = false;
+      function translateDynamicContent(root = document.body) {
+        if (isTranslating) return;
+        isTranslating = true;
+        try {
+          const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+          let node;
+          while ((node = walker.nextNode())) {
+            const parent = node.parentElement;
+            if (!parent || parent.closest('script, style, code, pre, [data-i18n], [data-i18n-html]')) continue;
+            const text = node.nodeValue.trim();
+            if (!text) continue;
+
+            if (currentLang === 'ur') {
+              if (DYNAMIC_DICT[text]) {
+                if (node.__origText === undefined) node.__origText = node.nodeValue;
+                node.nodeValue = node.nodeValue.replace(text, DYNAMIC_DICT[text]);
+              }
+            } else {
+              if (node.__origText !== undefined) {
+                node.nodeValue = node.__origText;
+                delete node.__origText;
+              }
+            }
+          }
+        } finally {
+          isTranslating = false;
+        }
+      }
+
+      function setLanguage(lang) {
+        currentLang = (lang === 'ur') ? 'ur' : 'en';
+        localStorage.setItem('tcs_lang', currentLang);
+        document.documentElement.lang = currentLang;
+
+        if (currentLang === 'ur') {
+          document.body.classList.add('lang-ur');
+        } else {
+          document.body.classList.remove('lang-ur');
+        }
+
+        // Toggle button text: "اردو" when in English, "English" when in Urdu
+        const toggleText = document.getElementById('lang-toggle-text');
+        if (toggleText) {
+          toggleText.textContent = (currentLang === 'ur') ? 'English' : 'اردو';
+        }
+
+        // Translate static elements
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+          const key = el.getAttribute('data-i18n');
+          if (I18N[currentLang] && I18N[currentLang][key]) {
+            el.textContent = I18N[currentLang][key];
+          } else if (I18N.en[key]) {
+            el.textContent = I18N.en[key];
+          }
+        });
+
+        document.querySelectorAll('[data-i18n-html]').forEach(el => {
+          const key = el.getAttribute('data-i18n-html');
+          if (I18N[currentLang] && I18N[currentLang][key]) {
+            el.innerHTML = I18N[currentLang][key];
+          } else if (I18N.en[key]) {
+            el.innerHTML = I18N.en[key];
+          }
+        });
+
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+          const key = el.getAttribute('data-i18n-placeholder');
+          if (I18N[currentLang] && I18N[currentLang][key]) {
+            el.placeholder = I18N[currentLang][key];
+          } else if (I18N.en[key]) {
+            el.placeholder = I18N.en[key];
+          }
+        });
+
+        document.querySelectorAll('[data-i18n-title]').forEach(el => {
+          const key = el.getAttribute('data-i18n-title');
+          if (I18N[currentLang] && I18N[currentLang][key]) {
+            el.title = I18N[currentLang][key];
+          } else if (I18N.en[key]) {
+            el.title = I18N.en[key];
+          }
+        });
+
+        // Translate dynamic content
+        translateDynamicContent(document.body);
+
+        // Update active role badge text if present
+        const headerRole = document.getElementById('header-user-role');
+        if (headerRole && headerRole.textContent) {
+          const roleLower = headerRole.textContent.toLowerCase();
+          if (roleLower.includes('admin') || roleLower.includes('ایڈمن')) {
+            headerRole.textContent = currentLang === 'ur' ? 'ایڈمن' : 'Admin';
+          } else if (roleLower.includes('teacher') || roleLower.includes('استاد')) {
+            headerRole.textContent = currentLang === 'ur' ? 'استاد' : 'Teacher';
+          } else if (roleLower.includes('parent') || roleLower.includes('والدین')) {
+            headerRole.textContent = currentLang === 'ur' ? 'والدین' : 'Parent';
+          }
+        }
+
+        const btnLogout = document.getElementById('btn-logout');
+        if (btnLogout) {
+          btnLogout.title = currentLang === 'ur' ? 'لاگ آؤٹ' : 'Sign Out';
+        }
+
+        window.dispatchEvent(new CustomEvent('languageChanged', { detail: { lang: currentLang } }));
+      }
+
+      window.setLanguage = setLanguage;
+
+      // 4. MutationObserver for dynamic views
+      const observer = new MutationObserver((mutations) => {
+        if (currentLang !== 'ur' || isTranslating) return;
+        for (const m of mutations) {
+          if (m.type === 'childList') {
+            m.addedNodes.forEach(node => {
+              if (node.nodeType === Node.ELEMENT_NODE) {
+                translateDynamicContent(node);
+              }
+            });
+          }
+        }
+      });
+
+      // 5. Initialize on load
+      document.addEventListener('DOMContentLoaded', () => {
+        const btnToggle = document.getElementById('btn-lang-toggle');
+        if (btnToggle) {
+          btnToggle.addEventListener('click', () => {
+            const nextLang = (currentLang === 'ur') ? 'en' : 'ur';
+            setLanguage(nextLang);
+          });
+        }
+
+        // Apply saved language
+        setLanguage(currentLang);
+
+        const main = document.querySelector('main');
+        if (main) {
+          observer.observe(main, { childList: true, subtree: true });
+        }
+        const modal = document.getElementById('modal-admin-attendance');
+        if (modal) {
+          observer.observe(modal, { childList: true, subtree: true });
+        }
+      });
+    })();
+  </script>
+
+  <!-- =====================================================================
        APPLICATION SCRIPT ENTRY POINT
        ===================================================================== -->
   <script type="module">
@@ -845,11 +1463,13 @@
       initNetworkMonitor((isOnline) => {
         const badge = document.getElementById('network-status-badge');
         if (badge) {
+          const onlineText = window.t ? window.t('badge_online', 'Online') : 'Online';
+          const offlineText = window.t ? window.t('badge_offline', 'Offline (IndexedDB Active)') : 'Offline (IndexedDB Active)';
           if (isOnline) {
-            badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Online`;
+            badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> <span data-i18n="badge_online">${onlineText}</span>`;
             badge.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200";
           } else {
-            badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500"></span> Offline (IndexedDB Active)`;
+            badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500"></span> <span data-i18n="badge_offline">${offlineText}</span>`;
             badge.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200";
           }
         }
