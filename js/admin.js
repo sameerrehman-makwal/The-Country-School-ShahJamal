@@ -5,7 +5,7 @@
  * Optimized for low-cost Firestore operations and bulk data management
  */
 
-import { db, auth } from './firebase-config.js?v=1.0.1';
+import { db, auth } from './firebase-config.js?v=1.0.2';
 import { 
   collection, 
   doc, 
@@ -493,10 +493,6 @@ window.deleteStudentPrompt = async function(studentId, studentName, classId) {
     await loadStudentsForAdminClass(classId, true);
     await loadAllClasses(true);
   } catch (error) {
-    console.error('Error removing student:', error);
-    showToast('Failed to remove student: ' + error.message, 'error');
-  }
-};
     console.error('Error removing student:', error);
     showToast('Failed to remove student: ' + error.message, 'error');
   }

@@ -3,7 +3,7 @@
  * The Country School ShahJamal Attendance System
  */
 
-import { auth, db, isFirebaseConfigured } from './firebase-config.js?v=1.0.1';
+import { auth, db, isFirebaseConfigured } from './firebase-config.js?v=1.0.2';
 import { 
   signInWithEmailAndPassword, 
   signOut, 

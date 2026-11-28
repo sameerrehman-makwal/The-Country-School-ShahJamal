@@ -5,7 +5,7 @@
  * Optimized for mobile touchscreens and zero-cost Firestore reads
  */
 
-import { db } from './firebase-config.js?v=1.0.1';
+import { db } from './firebase-config.js?v=1.0.2';
 import { 
   collection, 
   doc, 
