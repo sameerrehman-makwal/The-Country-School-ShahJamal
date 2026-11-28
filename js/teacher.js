@@ -21,6 +21,7 @@ import {
   getTodayDateString, 
   formatReadableDate, 
   createWhatsAppLink, 
+  buildAbsenteeWhatsAppUrl,
   calculateGrade, 
   computeReportCardTotals, 
   showToast,
@@ -725,8 +726,7 @@ function renderStudentRollCall(selectedDate) {
   currentClassStudents.forEach(student => {
     const record = currentAttendanceState[student.id] || { status: 'P', remarks: '' };
     const currentStatus = record.status;
-    const waLink = createWhatsAppLink(student.parentPhone, student.name, student.rollNo, currentStatus, selectedDate);
-    const showWhatsApp = (currentStatus === 'A' || currentStatus === 'L');
+    const showWhatsApp = (currentStatus === 'A' && Boolean(student.parentPhone));
 
     html += `
       <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:border-gray-200 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4" id="student-row-${escapeHTML(student.id)}">
@@ -746,19 +746,25 @@ function renderStudentRollCall(selectedDate) {
 
         <!-- Controls: Status Toggle & WhatsApp Action -->
         <div class="flex flex-wrap items-center gap-2 justify-between md:justify-end">
-          <!-- WhatsApp Link Button -->
+          <!-- WhatsApp Absentee Action Button -->
           <div id="wa-btn-container-${escapeHTML(student.id)}" class="${showWhatsApp ? 'inline-block' : 'hidden'}">
-            ${waLink ? `
-              <a href="${escapeHTML(waLink)}" target="_blank" rel="noopener noreferrer" 
-                 title="Send WhatsApp Absence Alert to Parent"
-                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold shadow-sm transition active:scale-95">
+            ${student.parentPhone ? `
+              <button type="button" 
+                      data-action="whatsapp-absent"
+                      data-phone="${escapeHTML(student.parentPhone)}"
+                      data-name="${escapeHTML(student.name)}"
+                      data-roll="${escapeHTML(student.rollNo)}"
+                      data-class="${escapeHTML(currentSelectedClass ? currentSelectedClass.name : '')}"
+                      data-date="${escapeHTML(selectedDate)}"
+                      title="Send WhatsApp Absence Alert to Parent"
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm transition active:scale-95">
                 <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
                   <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.288.043.088.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.861.174.086.275.072.376-.044.101-.116.433-.506.549-.68.116-.173.231-.144.39-.086s1.011.477 1.184.564.289.13.332.203c.044.071.044.418-.1.823z"/>
                 </svg>
-                <span>Notify Parent</span>
-              </a>
+                <span data-i18n="btn_whatsapp">WhatsApp</span>
+              </button>
             ` : `
-              <span class="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-lg">No WhatsApp</span>
+              <span class="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-lg">No Phone</span>
             `}
           </div>
 
@@ -833,24 +839,31 @@ window.toggleAttendance = function(studentId, newStatus) {
       }
     });
 
-    // Update WhatsApp button visibility
+    // Update WhatsApp button visibility (Visible when Absent 'A' and parent phone exists)
     const waContainer = document.getElementById(`wa-btn-container-${studentId}`);
     if (waContainer && student) {
-      if (newStatus === 'A' || newStatus === 'L') {
-        const waLink = createWhatsAppLink(student.parentPhone, student.name, student.rollNo, newStatus, selectedDate);
-        if (waLink) {
-          waContainer.innerHTML = `
-            <a href="${escapeHTML(waLink)}" target="_blank" rel="noopener noreferrer" 
-               title="Send WhatsApp Absence Alert to Parent"
-               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold shadow-sm transition active:scale-95">
-              <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.288.043.088.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.861.174.086.275.072.376-.044.101-.116.433-.506.549-.68.116-.173.231-.144.39-.086s1.011.477 1.184.564.289.13.332.203c.044.071.044.418-.1.823z"/></svg>
-              <span>Notify Parent</span>
-            </a>
-          `;
-        }
+      if (newStatus === 'A' && student.parentPhone) {
+        waContainer.innerHTML = `
+          <button type="button" 
+                  data-action="whatsapp-absent"
+                  data-phone="${escapeHTML(student.parentPhone)}"
+                  data-name="${escapeHTML(student.name)}"
+                  data-roll="${escapeHTML(student.rollNo)}"
+                  data-class="${escapeHTML(currentSelectedClass ? currentSelectedClass.name : '')}"
+                  data-date="${escapeHTML(selectedDate)}"
+                  title="Send WhatsApp Absence Alert to Parent"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm transition active:scale-95">
+            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+              <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.288.043.088.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.861.174.086.275.072.376-.044.101-.116.433-.506.549-.68.116-.173.231-.144.39-.086s1.011.477 1.184.564.289.13.332.203c.044.071.044.418-.1.823z"/>
+            </svg>
+            <span data-i18n="btn_whatsapp">WhatsApp</span>
+          </button>
+        `;
         waContainer.classList.remove('hidden');
+        waContainer.classList.add('inline-block');
       } else {
         waContainer.classList.add('hidden');
+        waContainer.classList.remove('inline-block');
       }
     }
   }
@@ -982,3 +995,26 @@ async function saveAttendance() {
     }
   }
 }
+
+/**
+ * Delegated Click Handler for WhatsApp Absentee Alerts in Teacher Roll Call
+ */
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-action="whatsapp-absent"]');
+  if (!btn) return;
+  e.preventDefault();
+
+  const phone = btn.dataset.phone;
+  const studentName = btn.dataset.name;
+  const rollNo = btn.dataset.roll;
+  const className = btn.dataset.class;
+  const dateStr = btn.dataset.date;
+  const lang = (typeof localStorage !== 'undefined' ? localStorage.getItem('tcs_lang') : 'en') || 'en';
+
+  const url = buildAbsenteeWhatsAppUrl(phone, { studentName, rollNo, className, dateStr, lang });
+  if (url) {
+    window.open(url, '_blank', 'noopener');
+  } else {
+    showToast('Invalid parent phone number for WhatsApp.', 'error');
+  }
+});

@@ -49,6 +49,129 @@ export function formatReadableDate(dateString) {
 }
 
 /**
+ * Builds a valid WhatsApp click-to-chat URL (wa.me).
+ * Strips spaces, dashes, and parentheses.
+ * If number starts with "0" (e.g. 03001234567), replaces leading "0" with "92".
+ * Strips any leading "+". Returns null if fewer than 10 digits remain.
+ */
+export function buildWhatsAppUrl(phone, message = '') {
+  if (!phone) return null;
+  let cleanPhone = String(phone).replace(/[\s\-\(\)]/g, '').replace(/^\+/, '');
+  if (cleanPhone.startsWith('00')) {
+    cleanPhone = cleanPhone.substring(2);
+  } else if (cleanPhone.startsWith('0')) {
+    cleanPhone = '92' + cleanPhone.substring(1);
+  }
+  // Strip any remaining non-digit characters
+  cleanPhone = cleanPhone.replace(/\D/g, '');
+  if (cleanPhone.length < 10) return null;
+
+  return message
+    ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+    : `https://wa.me/${cleanPhone}`;
+}
+
+/**
+ * Builds a polite absentee alert message in English or Urdu.
+ */
+export function buildAbsenteeWhatsAppMessage({ studentName, rollNo, className, dateStr, lang }) {
+  const currentLang = lang || (typeof localStorage !== 'undefined' ? localStorage.getItem('tcs_lang') : 'en') || 'en';
+  const friendlyDate = formatReadableDate(dateStr);
+
+  if (currentLang === 'ur') {
+    return `*دی کنٹری اسکول، شاہ جمال*\n\n` +
+      `محترم والدین،\n` +
+      `آپ کو مطلع کیا جاتا ہے کہ آپ کا بچہ/بچی *${studentName}* (رول نمبر: *${rollNo}*)، کلاس: *${className || '—'}*، آج بتاریخ *${friendlyDate}* اسکول سے غیر حاضر (ABSENT) ہے۔\n\n` +
+      `کسی بھی معلومات یا غیر حاضری کی وضاحت کے لیے برائے مہربانی اسکول دفتر سے رابطہ فرمائیں۔\n` +
+      `شکریہ۔\n` +
+      `The Country School, ShahJamal`;
+  }
+
+  return `*The Country School, ShahJamal*\n\n` +
+    `Dear Parent/Guardian,\n` +
+    `This is to inform you that your child *${studentName}* (Roll No: *${rollNo}*), Class: *${className || '—'}*, was marked *ABSENT* today (*${friendlyDate}*).\n\n` +
+    `If you have any questions or to report the reason for absence, please contact the school administration office.\n` +
+    `Thank you.\n` +
+    `The Country School, ShahJamal`;
+}
+
+/**
+ * Builds a WhatsApp absentee alert URL.
+ */
+export function buildAbsenteeWhatsAppUrl(phone, details) {
+  const message = buildAbsenteeWhatsAppMessage(details);
+  return buildWhatsAppUrl(phone, message);
+}
+
+/**
+ * Formats a comprehensive student report card into a clean WhatsApp share message.
+ */
+export function buildReportCardWhatsAppMessage(resultData, lang) {
+  const currentLang = lang || (typeof localStorage !== 'undefined' ? localStorage.getItem('tcs_lang') : 'en') || 'en';
+  const studentName = resultData.studentName || 'Student';
+  const rollNo = resultData.rollNo || '—';
+  const className = resultData.className || '—';
+  const termName = resultData.termName || 'Term Examination';
+  const academicYear = resultData.academicYear || '2026-2027';
+  const totalMax = Number(resultData.totalMaxMarks) || 0;
+  const totalObt = Number(resultData.totalObtainedMarks) || 0;
+  const pct = Number(resultData.percentage) || 0;
+  const grade = resultData.overallGrade || '—';
+  const result = resultData.overallResult || 'PASS';
+  const remarks = resultData.remarks ? resultData.remarks.trim() : '';
+  const subjects = resultData.subjects || [];
+
+  const subjectLines = subjects.map(s => {
+    const sName = s.name || 'Subject';
+    const sObt = Number(s.obtainedMarks) || 0;
+    const sMax = Number(s.maxMarks) || 0;
+    const sGrd = s.grade || calculateGrade(sMax > 0 ? (sObt / sMax) * 100 : 0);
+    return `• ${sName}: ${sObt}/${sMax} (${sGrd})`;
+  }).join('\n');
+
+  if (currentLang === 'ur') {
+    return `*دی کنٹری اسکول، شاہ جمال*\n` +
+      `*طالب علم امتحانی رزلٹ کارڈ*\n\n` +
+      `طالب علم کا نام: *${studentName}*\n` +
+      `رول نمبر: *${rollNo}*\n` +
+      `کلاس: *${className}*\n` +
+      `امتحانی سیشن: *${termName}* (${academicYear})\n\n` +
+      `*مضامین کے حاصل کردہ نمبرات:*\n${subjectLines || '—'}\n\n` +
+      `*کل نمبر:* *${totalObt} / ${totalMax}*\n` +
+      `*فیصد:* *${pct}%*\n` +
+      `*مجموعی گریڈ:* *${grade}*\n` +
+      `*نتیجہ:* *${result}*\n` +
+      (remarks ? `*مشاہدات / ریمارکس:* "${remarks}"\n\n` : '\n') +
+      `دی کنٹری اسکول، شاہ جمال`;
+  }
+
+  return `*The Country School, ShahJamal*\n` +
+    `*Student Examination Report Card*\n\n` +
+    `Student Name: *${studentName}*\n` +
+    `Roll Number: *${rollNo}*\n` +
+    `Class: *${className}*\n` +
+    `Exam Session: *${termName}* (${academicYear})\n\n` +
+    `*Subject-wise Marks:*\n${subjectLines || '—'}\n\n` +
+    `*Grand Total:* *${totalObt} / ${totalMax}*\n` +
+    `*Percentage:* *${pct}%*\n` +
+    `*Overall Grade:* *${grade}*\n` +
+    `*Result Status:* *${result}*\n` +
+    (remarks ? `*Observations:* "${remarks}"\n\n` : '\n') +
+    `The Country School, ShahJamal`;
+}
+
+/**
+ * Builds a WhatsApp share URL for a student report card.
+ */
+export function buildReportCardWhatsAppUrl(phone, resultData, lang) {
+  const message = buildReportCardWhatsAppMessage(resultData, lang);
+  if (phone) {
+    return buildWhatsAppUrl(phone, message);
+  }
+  return `https://wa.me/?text=${encodeURIComponent(message)}`;
+}
+
+/**
  * Sanitizes phone numbers for WhatsApp API links.
  * Normalizes local Pakistani mobile numbers (e.g. 03001234567 -> 923001234567)
  * and strips non-numeric characters.

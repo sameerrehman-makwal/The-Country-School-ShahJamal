@@ -17,6 +17,7 @@ import {
 import { 
   formatReadableDate, 
   calculateGrade, 
+  buildReportCardWhatsAppUrl,
   showToast,
   escapeHTML 
 } from './utils.js';
@@ -26,6 +27,7 @@ let linkedStudentsList = [];
 let currentChild = null;
 let publishedTerms = [];
 let selectedTermId = null;
+let currentResultData = null;
 
 // In-Memory Caches for Quota Optimization (Firestore Spark tier preservation)
 let classNamesCache = {}; // classId -> className string
@@ -40,6 +42,7 @@ export async function initParentPortal(user) {
 
   const termSelect = document.getElementById('parent-term-select');
   const btnPrintReport = document.getElementById('btn-print-parent-report');
+  const btnShareReportWA = document.getElementById('btn-share-parent-report-wa');
 
   if (termSelect) {
     termSelect.addEventListener('change', (e) => {
@@ -54,8 +57,39 @@ export async function initParentPortal(user) {
     });
   }
 
+  if (btnShareReportWA) {
+    btnShareReportWA.addEventListener('click', triggerShareReportCardWhatsApp);
+  }
+
   await loadLinkedChildren();
 }
+
+/**
+ * Shares the active student report card via WhatsApp
+ */
+function triggerShareReportCardWhatsApp() {
+  if (!currentResultData) {
+    showToast('No report card data loaded to share.', 'warning');
+    return;
+  }
+  const lang = (typeof localStorage !== 'undefined' ? localStorage.getItem('tcs_lang') : 'en') || 'en';
+  const phone = currentChild ? currentChild.parentPhone : null;
+  const url = buildReportCardWhatsAppUrl(phone, currentResultData, lang);
+  if (url) {
+    window.open(url, '_blank', 'noopener');
+  } else {
+    showToast('Failed to generate WhatsApp share link.', 'error');
+  }
+}
+
+// Delegated click listener for in-card WhatsApp share button
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-action="share-report-wa"]');
+  if (btn) {
+    e.preventDefault();
+    triggerShareReportCardWhatsApp();
+  }
+});
 
 /**
  * Loads student records for children linked to this parent account
@@ -351,9 +385,12 @@ async function loadChildReportCard() {
 }
 
 function renderNoReportCard(message) {
+  currentResultData = null;
   const container = document.getElementById('parent-report-card-container');
   const printBtn = document.getElementById('btn-print-parent-report');
+  const waBtn = document.getElementById('btn-share-parent-report-wa');
   if (printBtn) printBtn.disabled = true;
+  if (waBtn) waBtn.disabled = true;
 
   if (container) {
     container.innerHTML = `
@@ -370,9 +407,12 @@ function renderNoReportCard(message) {
  * Renders the formal Report Card in UI and prepares the print layout
  */
 function renderOfficialReportCard(resultData) {
+  currentResultData = resultData;
   const container = document.getElementById('parent-report-card-container');
   const printBtn = document.getElementById('btn-print-parent-report');
+  const waBtn = document.getElementById('btn-share-parent-report-wa');
   if (printBtn) printBtn.disabled = false;
+  if (waBtn) waBtn.disabled = false;
   if (!container) return;
 
   const subjects = resultData.subjects || [];
@@ -393,9 +433,18 @@ function renderOfficialReportCard(resultData) {
             <p class="text-xs text-slate-500 font-medium">${escapeHTML(resultData.termName || 'Term Examination')} (${escapeHTML(resultData.academicYear || '2026-2027')})</p>
           </div>
         </div>
-        <div class="px-4 py-2 rounded-2xl ${isPassed ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' : 'bg-rose-50 border border-rose-200 text-rose-800'} text-center font-bold">
-          <span class="block text-[10px] uppercase tracking-wider">Result Status</span>
-          <span class="text-base font-black">${escapeHTML(resultData.overallResult || 'PASS')}</span>
+        <div class="flex flex-wrap items-center gap-3">
+          <button type="button" 
+                  data-action="share-report-wa" 
+                  title="Share Examination Report Card on WhatsApp"
+                  class="print:hidden px-4 py-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs inline-flex items-center gap-2 shadow-sm transition active:scale-95">
+            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.288.043.088.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.861.174.086.275.072.376-.044.101-.116.433-.506.549-.68.116-.173.231-.144.39-.086s1.011.477 1.184.564.289.13.332.203c.044.071.044.418-.1.823z"/></svg>
+            <span data-i18n="btn_share_whatsapp">Share on WhatsApp</span>
+          </button>
+          <div class="px-4 py-2 rounded-2xl ${isPassed ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' : 'bg-rose-50 border border-rose-200 text-rose-800'} text-center font-bold">
+            <span class="block text-[10px] uppercase tracking-wider">Result Status</span>
+            <span class="text-base font-black">${escapeHTML(resultData.overallResult || 'PASS')}</span>
+          </div>
         </div>
       </div>
 

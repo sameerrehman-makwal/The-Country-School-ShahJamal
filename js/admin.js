@@ -27,6 +27,9 @@ import {
   downloadCSV, 
   createLowAttendanceWhatsAppLink, 
   createWhatsAppLink,
+  buildWhatsAppUrl,
+  buildAbsenteeWhatsAppUrl,
+  buildReportCardWhatsAppUrl,
   normalizeLoginIdentifier,
   showToast,
   escapeHTML 
@@ -408,7 +411,18 @@ function renderAdminStudentsTable() {
       <td class="px-6 py-4 font-semibold text-gray-800">${escapeHTML(s.name)}</td>
       <td class="px-6 py-4 text-gray-600">${s.fatherName ? escapeHTML(s.fatherName) : '—'}</td>
       <td class="px-6 py-4 text-gray-600">
-        ${s.parentPhone ? `<span class="font-mono text-xs">📞 ${escapeHTML(s.parentPhone)}</span>` : '<span class="text-gray-400 text-xs">None</span>'}
+        ${s.parentPhone ? `
+          <div class="flex items-center gap-2">
+            <span class="font-mono text-xs">📞 ${escapeHTML(s.parentPhone)}</span>
+            <button type="button" 
+                    data-action="whatsapp-direct" 
+                    data-phone="${escapeHTML(s.parentPhone)}" 
+                    title="Chat on WhatsApp" 
+                    class="p-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition inline-flex items-center active:scale-95">
+              <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.288.043.088.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.861.174.086.275.072.376-.044.101-.116.433-.506.549-.68.116-.173.231-.144.39-.086s1.011.477 1.184.564.289.13.332.203c.044.071.044.418-.1.823z"/></svg>
+            </button>
+          </div>
+        ` : '<span class="text-gray-400 text-xs">None</span>'}
       </td>
       <td class="px-6 py-4 text-gray-600">${s.gender ? escapeHTML(s.gender) : '—'}</td>
       <td class="px-6 py-4 text-right space-x-2">
@@ -652,7 +666,21 @@ function renderTeachersList(teachers) {
             ${escapeHTML(t.name)}
             <span class="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold">Teacher</span>
           </div>
-          <div class="text-xs text-gray-500 mt-0.5 font-mono">✉️ ${escapeHTML(t.email)} ${t.phone ? `• 📞 ${escapeHTML(t.phone)}` : ''} • <span class="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">UID: ${escapeHTML(t.id)}</span></div>
+          <div class="text-xs text-gray-500 mt-0.5 font-mono flex flex-wrap items-center gap-1.5">
+            <span>✉️ ${escapeHTML(t.email)}</span>
+            ${t.phone ? `
+              <span>• 📞 ${escapeHTML(t.phone)}</span>
+              <button type="button" 
+                      data-action="whatsapp-direct" 
+                      data-phone="${escapeHTML(t.phone)}" 
+                      title="Chat on WhatsApp" 
+                      class="px-2 py-0.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold inline-flex items-center gap-1 transition active:scale-95">
+                <svg class="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.288.043.088.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.861.174.086.275.072.376-.044.101-.116.433-.506.549-.68.116-.173.231-.144.39-.086s1.011.477 1.184.564.289.13.332.203c.044.071.044.418-.1.823z"/></svg>
+                <span data-i18n="btn_whatsapp">WhatsApp</span>
+              </button>
+            ` : ''}
+            <span>• UID: <span class="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">${escapeHTML(t.id)}</span></span>
+          </div>
           <div class="mt-2.5 flex flex-wrap gap-1.5">
             ${assignedNames.length > 0 
               ? assignedNames.map(cn => `<span class="px-2.5 py-1 rounded-lg text-xs bg-indigo-50 text-indigo-700 font-semibold">${escapeHTML(cn)}</span>`).join('')
@@ -982,6 +1010,8 @@ window.adminOpenAttendanceModal = async function(classId, dateStr) {
 
     students.forEach(s => {
       const rec = records[s.id] || { status: 'P', remarks: '' };
+      const isAbsent = (rec.status === 'A');
+
       html += `
         <div class="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100">
           <div class="flex items-center gap-3">
@@ -990,11 +1020,31 @@ window.adminOpenAttendanceModal = async function(classId, dateStr) {
             </span>
             <div>
               <div class="font-bold text-gray-800 text-sm">${escapeHTML(s.name)}</div>
-              <div class="text-[11px] text-gray-400">S/O ${s.fatherName ? escapeHTML(s.fatherName) : '—'}</div>
+              <div class="text-[11px] text-gray-400">S/O ${s.fatherName ? escapeHTML(s.fatherName) : '—'} ${s.parentPhone ? `• 📞 ${escapeHTML(s.parentPhone)}` : ''}</div>
             </div>
           </div>
           <div class="flex items-center gap-2">
-            <select name="status_${escapeHTML(s.id)}" class="text-xs font-bold rounded-lg border-gray-200 bg-white p-1.5 focus:ring-indigo-500">
+            <!-- WhatsApp Absentee Alert Button -->
+            <div id="admin-wa-btn-${escapeHTML(s.id)}" class="${isAbsent && s.parentPhone ? 'inline-block' : 'hidden'}">
+              <button type="button" 
+                      data-action="whatsapp-absent"
+                      data-phone="${escapeHTML(s.parentPhone || '')}"
+                      data-name="${escapeHTML(s.name)}"
+                      data-roll="${escapeHTML(s.rollNo)}"
+                      data-class="${escapeHTML(className)}"
+                      data-date="${escapeHTML(dateStr)}"
+                      title="Send WhatsApp Absence Alert to Parent"
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm transition active:scale-95">
+                <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                  <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.288.043.088.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.861.174.086.275.072.376-.044.101-.116.433-.506.549-.68.116-.173.231-.144.39-.086s1.011.477 1.184.564.289.13.332.203c.044.071.044.418-.1.823z"/>
+                </svg>
+                <span data-i18n="btn_whatsapp">WhatsApp</span>
+              </button>
+            </div>
+
+            <select name="status_${escapeHTML(s.id)}" 
+                    data-student-id="${escapeHTML(s.id)}"
+                    class="admin-att-select text-xs font-bold rounded-lg border-gray-200 bg-white p-1.5 focus:ring-indigo-500">
               <option value="P" ${rec.status === 'P' ? 'selected' : ''}>Present</option>
               <option value="A" ${rec.status === 'A' ? 'selected' : ''}>Absent</option>
               <option value="L" ${rec.status === 'L' ? 'selected' : ''}>Late</option>
@@ -1021,6 +1071,27 @@ window.adminOpenAttendanceModal = async function(classId, dateStr) {
     `;
 
     modalBody.innerHTML = html;
+
+    // Attach dynamic change listener to toggle WhatsApp alert button when status is switched to Absent
+    const overrideForm = document.getElementById('form-admin-attendance-override');
+    if (overrideForm) {
+      overrideForm.addEventListener('change', (e) => {
+        if (e.target.matches('.admin-att-select')) {
+          const stdId = e.target.dataset.studentId;
+          const waContainer = document.getElementById(`admin-wa-btn-${stdId}`);
+          if (waContainer) {
+            const studentObj = students.find(st => st.id === stdId);
+            if (e.target.value === 'A' && studentObj && studentObj.parentPhone) {
+              waContainer.classList.remove('hidden');
+              waContainer.classList.add('inline-block');
+            } else {
+              waContainer.classList.add('hidden');
+              waContainer.classList.remove('inline-block');
+            }
+          }
+        }
+      });
+    }
   } catch (error) {
     console.error('Error opening override modal:', error);
     modalBody.innerHTML = `<div class="p-6 text-center text-rose-600 text-sm">Failed to load attendance: ${escapeHTML(error.message)}</div>`;
@@ -1767,9 +1838,20 @@ function renderParentAccountsList(parents) {
             ${escapeHTML(p.name)}
             <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-bold">Parent</span>
           </div>
-          <div class="text-xs text-slate-500 mt-0.5 font-mono">
-            Login ID: <strong class="text-slate-800">${escapeHTML((p.email || '').replace('@school.local', ''))}</strong> (${escapeHTML(p.email)}) 
-            ${p.phone ? `• 📞 ${escapeHTML(p.phone)}` : ''} • UID: <span class="bg-slate-100 px-1 py-0.5 rounded text-[10px]">${escapeHTML(p.id)}</span>
+          <div class="text-xs text-slate-500 mt-0.5 font-mono flex flex-wrap items-center gap-1.5">
+            <span>Login ID: <strong class="text-slate-800">${escapeHTML((p.email || '').replace('@school.local', ''))}</strong> (${escapeHTML(p.email)})</span>
+            ${p.phone ? `
+              <span>• 📞 ${escapeHTML(p.phone)}</span>
+              <button type="button" 
+                      data-action="whatsapp-direct" 
+                      data-phone="${escapeHTML(p.phone)}" 
+                      title="Chat on WhatsApp" 
+                      class="px-2 py-0.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold inline-flex items-center gap-1 transition active:scale-95">
+                <svg class="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.288.043.088.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.861.174.086.275.072.376-.044.101-.116.433-.506.549-.68.116-.173.231-.144.39-.086s1.011.477 1.184.564.289.13.332.203c.044.071.044.418-.1.823z"/></svg>
+                <span data-i18n="btn_whatsapp">WhatsApp</span>
+              </button>
+            ` : ''}
+            <span>• UID: <span class="bg-slate-100 px-1 py-0.5 rounded text-[10px]">${escapeHTML(p.id)}</span></span>
           </div>
           <div class="mt-2.5 flex flex-wrap gap-1.5 items-center">
             <span class="text-[10px] font-bold text-slate-400 uppercase">Linked Children:</span>
@@ -1951,3 +2033,61 @@ window.deleteParentPrompt = async function(parentId, parentName) {
     showToast('Failed to remove parent: ' + error.message, 'error');
   }
 };
+
+/**
+ * Delegated Click Handlers for WhatsApp Actions in Admin Portal
+ * Handles Quick-Chat direct contact, Absentee Alert notifications, and Report Card sharing
+ */
+document.addEventListener('click', (e) => {
+  // 1. Directory Quick-Chat (Teachers, Parents, Students)
+  const directBtn = e.target.closest('[data-action="whatsapp-direct"]');
+  if (directBtn) {
+    e.preventDefault();
+    const phone = directBtn.dataset.phone;
+    const url = buildWhatsAppUrl(phone);
+    if (url) {
+      window.open(url, '_blank', 'noopener');
+    } else {
+      showToast('Invalid phone number for WhatsApp.', 'error');
+    }
+    return;
+  }
+
+  // 2. Absentee Alert from Admin Attendance Override Modal
+  const absentBtn = e.target.closest('[data-action="whatsapp-absent"]');
+  if (absentBtn) {
+    e.preventDefault();
+    const phone = absentBtn.dataset.phone;
+    const studentName = absentBtn.dataset.name;
+    const rollNo = absentBtn.dataset.roll;
+    const className = absentBtn.dataset.class;
+    const dateStr = absentBtn.dataset.date;
+    const lang = (typeof localStorage !== 'undefined' ? localStorage.getItem('tcs_lang') : 'en') || 'en';
+
+    const url = buildAbsenteeWhatsAppUrl(phone, { studentName, rollNo, className, dateStr, lang });
+    if (url) {
+      window.open(url, '_blank', 'noopener');
+    } else {
+      showToast('Invalid parent phone number for WhatsApp.', 'error');
+    }
+    return;
+  }
+
+  // 3. Report Card WhatsApp Share
+  const shareReportBtn = e.target.closest('[data-action="share-report-wa"]');
+  if (shareReportBtn) {
+    e.preventDefault();
+    const reportData = window.currentReportCardData || null;
+    if (reportData) {
+      const lang = (typeof localStorage !== 'undefined' ? localStorage.getItem('tcs_lang') : 'en') || 'en';
+      const phone = shareReportBtn.dataset.phone || (reportData ? reportData.parentPhone : null);
+      const url = buildReportCardWhatsAppUrl(phone, reportData, lang);
+      if (url) {
+        window.open(url, '_blank', 'noopener');
+      } else {
+        showToast('Failed to generate WhatsApp share link.', 'error');
+      }
+    }
+    return;
+  }
+});
