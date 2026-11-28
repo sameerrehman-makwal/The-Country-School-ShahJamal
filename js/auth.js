@@ -217,7 +217,7 @@ async function handleBootstrapAdmin() {
       createdAt: new Date().toISOString()
     };
 
-    await setDoc(doc(db, 'users', user.uid), adminDoc);
+    await setDoc(doc(db, 'users', user.uid), adminDoc, { merge: true });
     document.getElementById('bootstrap-admin-card').classList.add('hidden');
     showToast('First Administrator profile initialized!', 'success');
 
