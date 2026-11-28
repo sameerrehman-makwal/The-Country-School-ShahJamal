@@ -384,20 +384,11 @@ service cloud.firestore {
       // Only administrators can list all user documents (prevents enumeration attacks).
       allow list: if isAuthenticated() && isAdmin();
 
-      // Admins can create user profiles (teachers, parents, extra admins).
-      // A user creating their own record during first-time bootstrap can create if request.auth.uid == userId.
-      // Non-admins can NEVER create parent accounts (preventing role self-escalation or self-linking of students).
+      // Only administrators can create user profiles (teachers, parents, extra admins).
+      // Closes privilege self-escalation hole: non-admins can never create admin documents.
       allow create: if isAuthenticated() &&
-                    isValidUser(request.resource.data) &&
-                    (
-                      isAdmin() ||
-                      (
-                        isOwner(userId) &&
-                        (!('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid) &&
-                        request.resource.data.role != 'parent' &&
-                        request.resource.data.role != 'teacher'
-                      )
-                    );
+                    isAdmin() &&
+                    isValidUser(request.resource.data);
 
       // Only administrators can update user profiles.
       // Strictly prevents role self-escalation, self-linking of other students, or unauthorized class reassignment.
