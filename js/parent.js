@@ -27,6 +27,11 @@ let currentChild = null;
 let publishedTerms = [];
 let selectedTermId = null;
 
+// In-Memory Caches for Quota Optimization (Firestore Spark tier preservation)
+let classNamesCache = {}; // classId -> className string
+let parentAttendanceCache = {}; // classId -> array of attendance doc data
+let parentReportCardsCache = {}; // `${childId}_${termId}` -> resultData object
+
 /**
  * Initialize Parent Portal
  */
@@ -55,7 +60,7 @@ export async function initParentPortal(user) {
 /**
  * Loads student records for children linked to this parent account
  */
-async function loadLinkedChildren() {
+async function loadLinkedChildren(forceRefresh = false) {
   const emptyState = document.getElementById('parent-no-children');
   const mainSection = document.getElementById('parent-main-section');
 
@@ -70,16 +75,30 @@ async function loadLinkedChildren() {
   if (emptyState) emptyState.classList.add('hidden');
   if (mainSection) mainSection.classList.remove('hidden');
 
+  if (!forceRefresh && linkedStudentsList.length > 0) {
+    renderChildSwitcher();
+    if (!currentChild) {
+      currentChild = linkedStudentsList[0];
+      await selectChild(currentChild.id);
+    }
+    return;
+  }
+
   try {
     linkedStudentsList = [];
     for (const stdId of studentIds) {
       const snap = await getDoc(doc(db, 'students', stdId));
       if (snap.exists()) {
         const studentData = { id: snap.id, ...snap.data() };
-        // Fetch class name
+        // Fetch class name (check in-memory cache first to avoid duplicate class reads for siblings)
         if (studentData.classId) {
-          const classSnap = await getDoc(doc(db, 'classes', studentData.classId));
-          studentData.className = classSnap.exists() ? (classSnap.data().name || studentData.classId) : studentData.classId;
+          if (classNamesCache[studentData.classId]) {
+            studentData.className = classNamesCache[studentData.classId];
+          } else {
+            const classSnap = await getDoc(doc(db, 'classes', studentData.classId));
+            studentData.className = classSnap.exists() ? (classSnap.data().name || studentData.classId) : studentData.classId;
+            classNamesCache[studentData.classId] = studentData.className;
+          }
         }
         linkedStudentsList.push(studentData);
       }
@@ -173,12 +192,19 @@ async function loadChildAttendance() {
   if (!currentChild || !currentChild.classId) return;
 
   try {
-    // Read attendance documents for this child's class
-    const q = query(
-      collection(db, 'attendance'),
-      where('classId', '==', currentChild.classId)
-    );
-    const snap = await getDocs(q);
+    // Read attendance documents for this child's class (reuse in-memory cache if already loaded)
+    let attendanceDocs = [];
+    if (parentAttendanceCache[currentChild.classId]) {
+      attendanceDocs = parentAttendanceCache[currentChild.classId];
+    } else {
+      const q = query(
+        collection(db, 'attendance'),
+        where('classId', '==', currentChild.classId)
+      );
+      const snap = await getDocs(q);
+      snap.forEach(d => attendanceDocs.push(d.data()));
+      parentAttendanceCache[currentChild.classId] = attendanceDocs;
+    }
 
     let totalDays = 0;
     let present = 0;
@@ -186,8 +212,7 @@ async function loadChildAttendance() {
     let late = 0;
     let excused = 0;
 
-    snap.forEach(d => {
-      const data = d.data();
+    attendanceDocs.forEach(data => {
       const records = data.records || {};
       const childRecord = records[currentChild.id];
       if (childRecord) {
@@ -240,11 +265,14 @@ async function loadPublishedTerms() {
   if (!termSelect) return;
 
   try {
-    const q = query(collection(db, 'terms'), where('status', '==', 'published'));
-    const snap = await getDocs(q);
+    // Reuse in-memory cache if already loaded
+    if (publishedTerms.length === 0) {
+      const q = query(collection(db, 'terms'), where('status', '==', 'published'));
+      const snap = await getDocs(q);
 
-    publishedTerms = [];
-    snap.forEach(d => publishedTerms.push({ id: d.id, ...d.data() }));
+      publishedTerms = [];
+      snap.forEach(d => publishedTerms.push({ id: d.id, ...d.data() }));
+    }
 
     if (publishedTerms.length === 0) {
       termSelect.innerHTML = `<option value="">No published terms available</option>`;
@@ -273,6 +301,23 @@ async function loadChildReportCard() {
   const container = document.getElementById('parent-report-card-container');
   if (!container) return;
 
+  const docId = `${currentChild.id}_${selectedTermId}`;
+
+  // Check in-memory report card cache first
+  if (parentReportCardsCache[docId]) {
+    const cachedData = parentReportCardsCache[docId];
+    if (cachedData === 'NOT_FOUND') {
+      renderNoReportCard('Marks for this examination session have not been posted.');
+      return;
+    }
+    if (cachedData.status !== 'published') {
+      renderNoReportCard('Results for this term are currently in draft preparation.');
+      return;
+    }
+    renderOfficialReportCard(cachedData);
+    return;
+  }
+
   container.innerHTML = `
     <div class="p-8 text-center text-slate-500">
       <svg class="animate-spin h-6 w-6 text-indigo-600 mx-auto mb-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
@@ -281,15 +326,16 @@ async function loadChildReportCard() {
   `;
 
   try {
-    const docId = `${currentChild.id}_${selectedTermId}`;
     const snap = await getDoc(doc(db, 'results', docId));
 
     if (!snap.exists()) {
+      parentReportCardsCache[docId] = 'NOT_FOUND';
       renderNoReportCard('Marks for this examination session have not been posted.');
       return;
     }
 
     const data = snap.data();
+    parentReportCardsCache[docId] = data;
 
     // Security check: Verify published status
     if (data.status !== 'published') {

@@ -15,18 +15,14 @@ import {
 import { 
   initializeFirestore, 
   persistentLocalCache, 
-  persistentMultipleTabManager 
+  persistentMultipleTabManager,
+  getFirestore 
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 /**
  * ---------------------------------------------------------------------
- * STEP 1: ADD YOUR FIREBASE CONFIG KEYS HERE
+ * FIREBASE PRODUCTION CONFIGURATION KEYS
  * ---------------------------------------------------------------------
- * 1. Open Firebase Console: https://console.firebase.google.com/
- * 2. Select or create your project: "The Country School ShahJamal"
- * 3. Go to Project Settings (gear icon) -> "General" -> Scroll down to "Your apps".
- * 4. Click the Web (</>) icon to register a web app.
- * 5. Copy the configuration object and paste it below:
  */
 export const firebaseConfig = {
   apiKey: "AIzaSyDrlk9x80OoZwMA96ZiJ8gywcP3uXnbEdY",
@@ -44,10 +40,11 @@ export const firebaseConfig = {
  */
 export function isFirebaseConfigured() {
   return (
-    firebaseConfig.apiKey &&
+    Boolean(firebaseConfig.apiKey) &&
     !firebaseConfig.apiKey.includes('REPLACE_WITH') &&
-    firebaseConfig.projectId &&
-    !firebaseConfig.projectId.includes('YOUR_PROJECT')
+    Boolean(firebaseConfig.projectId) &&
+    !firebaseConfig.projectId.includes('YOUR_PROJECT') &&
+    firebaseConfig.apiKey.startsWith('AIzaSy')
   );
 }
 
@@ -68,11 +65,15 @@ try {
       tabManager: persistentMultipleTabManager()
     })
   });
-  console.log('✅ Firestore offline persistence (IndexedDB) enabled successfully.');
+  console.log('✅ Firestore persistent local cache (IndexedDB multi-tab) enabled successfully.');
 } catch (error) {
-  console.warn('Firestore offline persistence fallback triggered:', error);
+  console.warn('Firestore persistent cache initialization notice:', error);
   // Fallback to standard initialization if IndexedDB is blocked (e.g. strict private browsing)
-  firestoreInstance = initializeFirestore(app, {});
+  try {
+    firestoreInstance = getFirestore(app);
+  } catch (fallbackErr) {
+    firestoreInstance = initializeFirestore(app, {});
+  }
 }
 
 export const db = firestoreInstance;

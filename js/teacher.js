@@ -35,6 +35,10 @@ let currentClassStudents = [];
 let currentAttendanceState = {}; // { [studentId]: { status: 'P'|'A'|'L'|'E', remarks: '' } }
 let isReadOnlyMode = false;
 
+// In-Memory Caches for Quota Optimization (Firestore Spark tier preservation)
+let teacherClassStudentsCache = {}; // classId -> array of active student objects
+let teacherClassSubjectsCache = {}; // classId -> array of subjects
+
 // Marks Entry State
 let teacherExamTerms = [];
 let currentMarksTerm = null;
@@ -129,10 +133,12 @@ async function initTeacherMarksSection() {
   const marksClassSelect = document.getElementById('teacher-marks-class-select');
 
   try {
-    // 1. Load active terms
-    const snap = await getDocs(collection(db, 'terms'));
-    teacherExamTerms = [];
-    snap.forEach(d => teacherExamTerms.push({ id: d.id, ...d.data() }));
+    // 1. Load active terms (reuse in-memory cache if already loaded to avoid redundant reads)
+    if (teacherExamTerms.length === 0) {
+      const snap = await getDocs(collection(db, 'terms'));
+      teacherExamTerms = [];
+      snap.forEach(d => teacherExamTerms.push({ id: d.id, ...d.data() }));
+    }
 
     if (marksTermSelect) {
       if (teacherExamTerms.length === 0) {
@@ -210,36 +216,46 @@ async function loadTeacherMarksSheet() {
   }
 
   try {
-    // 1. Fetch class subjects (or default standard template)
-    const subSnap = await getDoc(doc(db, 'classSubjects', currentMarksClass.id));
-    if (subSnap.exists() && subSnap.data().subjects && subSnap.data().subjects.length > 0) {
-      currentClassSubjects = subSnap.data().subjects;
+    // 1. Fetch class subjects (or default standard template, check in-memory cache first)
+    if (teacherClassSubjectsCache[currentMarksClass.id]) {
+      currentClassSubjects = teacherClassSubjectsCache[currentMarksClass.id];
     } else {
-      currentClassSubjects = [
-        { name: 'English', maxMarks: 100, passMarks: 33 },
-        { name: 'Mathematics', maxMarks: 100, passMarks: 33 },
-        { name: 'Science', maxMarks: 100, passMarks: 33 },
-        { name: 'Urdu', maxMarks: 100, passMarks: 33 },
-        { name: 'Islamiat', maxMarks: 50, passMarks: 17 }
-      ];
+      const subSnap = await getDoc(doc(db, 'classSubjects', currentMarksClass.id));
+      if (subSnap.exists() && subSnap.data().subjects && subSnap.data().subjects.length > 0) {
+        currentClassSubjects = subSnap.data().subjects;
+      } else {
+        currentClassSubjects = [
+          { name: 'English', maxMarks: 100, passMarks: 33 },
+          { name: 'Mathematics', maxMarks: 100, passMarks: 33 },
+          { name: 'Science', maxMarks: 100, passMarks: 33 },
+          { name: 'Urdu', maxMarks: 100, passMarks: 33 },
+          { name: 'Islamiat', maxMarks: 50, passMarks: 17 }
+        ];
+      }
+      teacherClassSubjectsCache[currentMarksClass.id] = currentClassSubjects;
     }
 
-    // 2. Fetch students for class
-    const qStudents = query(
-      collection(db, 'students'),
-      where('classId', '==', currentMarksClass.id),
-      where('status', '==', 'active')
-    );
-    const snapStudents = await getDocs(qStudents);
-    currentMarksStudents = [];
-    snapStudents.forEach(d => currentMarksStudents.push({ id: d.id, ...d.data() }));
+    // 2. Fetch students for class (reuse in-memory cache if attendance or marks already fetched this class)
+    if (teacherClassStudentsCache[currentMarksClass.id]) {
+      currentMarksStudents = [...teacherClassStudentsCache[currentMarksClass.id]];
+    } else {
+      const qStudents = query(
+        collection(db, 'students'),
+        where('classId', '==', currentMarksClass.id),
+        where('status', '==', 'active')
+      );
+      const snapStudents = await getDocs(qStudents);
+      currentMarksStudents = [];
+      snapStudents.forEach(d => currentMarksStudents.push({ id: d.id, ...d.data() }));
 
-    currentMarksStudents.sort((a, b) => {
-      const numA = parseInt(a.rollNo, 10);
-      const numB = parseInt(b.rollNo, 10);
-      if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-      return String(a.rollNo).localeCompare(String(b.rollNo));
-    });
+      currentMarksStudents.sort((a, b) => {
+        const numA = parseInt(a.rollNo, 10);
+        const numB = parseInt(b.rollNo, 10);
+        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+        return String(a.rollNo).localeCompare(String(b.rollNo));
+      });
+      teacherClassStudentsCache[currentMarksClass.id] = [...currentMarksStudents];
+    }
 
     // 3. Fetch existing results for this class and term
     const qResults = query(
@@ -491,7 +507,7 @@ async function saveTeacherMarks() {
 /**
  * Loads metadata for classes assigned to this teacher
  */
-async function loadAssignedClasses() {
+async function loadAssignedClasses(forceRefresh = false) {
   const classSelect = document.getElementById('teacher-class-select');
   const emptyState = document.getElementById('teacher-no-classes');
   const mainRollCall = document.getElementById('teacher-section-attendance');
@@ -506,6 +522,20 @@ async function loadAssignedClasses() {
 
   if (emptyState) emptyState.classList.add('hidden');
   if (mainRollCall) mainRollCall.classList.remove('hidden');
+
+  if (!forceRefresh && assignedClasses.length > 0) {
+    if (classSelect) {
+      classSelect.innerHTML = assignedClasses.map(c => 
+        `<option value="${escapeHTML(c.id)}">${escapeHTML(c.name || `Grade ${c.grade} - Section ${c.section}`)}</option>`
+      ).join('');
+
+      if (assignedClasses.length > 0 && !currentSelectedClass) {
+        currentSelectedClass = assignedClasses[0];
+        await loadClassAttendance();
+      }
+    }
+    return;
+  }
 
   try {
     // Read class docs for assigned IDs
@@ -578,27 +608,33 @@ async function loadClassAttendance() {
   }
 
   try {
-    // 1. Fetch Students strictly for this class (one-time read, max 30-40 docs)
-    const studentsRef = collection(db, 'students');
-    const q = query(
-      studentsRef, 
-      where('classId', '==', currentSelectedClass.id),
-      where('status', '==', 'active')
-    );
-    const studentsSnap = await getDocs(q);
+    // 1. Fetch Students strictly for this class (check in-memory cache first to save quota)
+    if (teacherClassStudentsCache[currentSelectedClass.id]) {
+      currentClassStudents = [...teacherClassStudentsCache[currentSelectedClass.id]];
+    } else {
+      const studentsRef = collection(db, 'students');
+      const q = query(
+        studentsRef, 
+        where('classId', '==', currentSelectedClass.id),
+        where('status', '==', 'active')
+      );
+      const studentsSnap = await getDocs(q);
 
-    currentClassStudents = [];
-    studentsSnap.forEach(docSnap => {
-      currentClassStudents.push({ id: docSnap.id, ...docSnap.data() });
-    });
+      currentClassStudents = [];
+      studentsSnap.forEach(docSnap => {
+        currentClassStudents.push({ id: docSnap.id, ...docSnap.data() });
+      });
 
-    // Sort in memory by Roll Number numerically/alphabetically
-    currentClassStudents.sort((a, b) => {
-      const numA = parseInt(a.rollNo, 10);
-      const numB = parseInt(b.rollNo, 10);
-      if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-      return String(a.rollNo).localeCompare(String(b.rollNo));
-    });
+      // Sort in memory by Roll Number numerically/alphabetically
+      currentClassStudents.sort((a, b) => {
+        const numA = parseInt(a.rollNo, 10);
+        const numB = parseInt(b.rollNo, 10);
+        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+        return String(a.rollNo).localeCompare(String(b.rollNo));
+      });
+
+      teacherClassStudentsCache[currentSelectedClass.id] = [...currentClassStudents];
+    }
 
     // 2. Fetch Attendance document: attendance/{classId}_{date} (1 single read!)
     const attendanceDocId = `${currentSelectedClass.id}_${selectedDate}`;

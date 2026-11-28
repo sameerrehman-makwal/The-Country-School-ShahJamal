@@ -38,6 +38,12 @@ let parsedCSVStudents = [];
 let currentAdminClassStudents = [];
 let selectedAdminClassId = null;
 
+// In-Memory Caches for Quota Optimization (Firestore Spark tier preservation)
+let classStudentsCache = {}; // classId -> array of active student objects
+let cachedTeachersList = null; // array of teacher user objects
+let cachedParentsList = null; // array of parent user objects
+let classSubjectsCache = {}; // classId -> array of subjects
+
 // Exam & Parent State
 let allExamTerms = [];
 let selectedConfigClassId = null;
@@ -126,7 +132,13 @@ function setupClassManagementListeners() {
   }
 }
 
-async function loadAllClasses() {
+async function loadAllClasses(forceRefresh = false) {
+  if (!forceRefresh && allSchoolClasses.length > 0) {
+    renderClassesTable();
+    refreshStudentClassDropdown();
+    refreshReportClassDropdown();
+    return;
+  }
   try {
     const snap = await getDocs(collection(db, 'classes'));
     allSchoolClasses = [];
@@ -222,7 +234,7 @@ async function handleAddClass(e) {
     gradeInput.value = '';
     sectionInput.value = '';
 
-    await loadAllClasses();
+    await loadAllClasses(true);
   } catch (error) {
     console.error('Error adding class:', error);
     showToast('Failed to create class: ' + error.message, 'error');
@@ -238,8 +250,10 @@ window.deleteClassPrompt = async function(classId, className) {
 
   try {
     await deleteDoc(doc(db, 'classes', classId));
+    delete classStudentsCache[classId];
+    delete classSubjectsCache[classId];
     showToast(`Class "${displayName}" deleted.`, 'info');
-    await loadAllClasses();
+    await loadAllClasses(true);
   } catch (error) {
     console.error('Error deleting class:', error);
     showToast('Failed to delete class: ' + error.message, 'error');
@@ -303,8 +317,9 @@ function refreshStudentClassDropdown() {
 
 /**
  * Queries students strictly filtered by classId (30-40 documents per read)
+ * Reuses in-memory classStudentsCache to avoid re-reading active students on every tab or filter change
  */
-async function loadStudentsForAdminClass(classId) {
+async function loadStudentsForAdminClass(classId, forceRefresh = false) {
   const tbody = document.getElementById('table-students-body');
   if (!tbody) return;
 
@@ -316,6 +331,13 @@ async function loadStudentsForAdminClass(classId) {
         </td>
       </tr>
     `;
+    return;
+  }
+
+  // Check in-memory cache first to avoid re-fetching 30-40 student documents
+  if (!forceRefresh && classStudentsCache[classId]) {
+    currentAdminClassStudents = [...classStudentsCache[classId]];
+    renderAdminStudentsTable();
     return;
   }
 
@@ -347,6 +369,9 @@ async function loadStudentsForAdminClass(classId) {
       if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
       return String(a.rollNo).localeCompare(String(b.rollNo));
     });
+
+    // Cache in memory for instant subsequent lookups
+    classStudentsCache[classId] = [...currentAdminClassStudents];
 
     // Update class studentCount cache if out of sync
     const classObj = allSchoolClasses.find(c => c.id === classId);
@@ -439,11 +464,14 @@ async function handleAddSingleStudent(e) {
     fatherInput.value = '';
     phoneInput.value = '';
 
+    // Invalidate student cache for this class
+    delete classStudentsCache[classId];
+
     // If currently viewing this class, refresh
     if (selectedAdminClassId === classId) {
-      await loadStudentsForAdminClass(classId);
+      await loadStudentsForAdminClass(classId, true);
     }
-    await loadAllClasses();
+    await loadAllClasses(true);
   } catch (error) {
     console.error('Error adding student:', error);
     showToast('Failed to add student: ' + error.message, 'error');
@@ -461,9 +489,14 @@ window.deleteStudentPrompt = async function(studentId, studentName, classId) {
     // Soft delete by setting status: 'inactive'
     await updateDoc(doc(db, 'students', studentId), { status: 'inactive' });
     showToast(`Student "${displayName}" removed.`, 'info');
-    await loadStudentsForAdminClass(classId);
-    await loadAllClasses();
+    delete classStudentsCache[classId];
+    await loadStudentsForAdminClass(classId, true);
+    await loadAllClasses(true);
   } catch (error) {
+    console.error('Error removing student:', error);
+    showToast('Failed to remove student: ' + error.message, 'error');
+  }
+};
     console.error('Error removing student:', error);
     showToast('Failed to remove student: ' + error.message, 'error');
   }
@@ -568,10 +601,13 @@ async function handleExecuteCSVImport() {
     document.getElementById('csv-file-input').value = '';
     document.getElementById('csv-preview-container').classList.add('hidden');
 
+    // Invalidate student cache for target class
+    delete classStudentsCache[targetClassId];
+
     if (selectedAdminClassId === targetClassId) {
-      await loadStudentsForAdminClass(targetClassId);
+      await loadStudentsForAdminClass(targetClassId, true);
     }
-    await loadAllClasses();
+    await loadAllClasses(true);
   } catch (error) {
     console.error('Bulk import error:', error);
     showToast('Bulk import failed: ' + error.message, 'error');
@@ -594,7 +630,57 @@ function setupTeacherManagementListeners() {
   }
 }
 
-async function loadTeachersList() {
+function renderTeachersList(teachers) {
+  const container = document.getElementById('teachers-list-container');
+  if (!container) return;
+
+  if (teachers.length === 0) {
+    container.innerHTML = `
+      <div class="p-8 text-center text-gray-400 bg-white rounded-2xl border border-gray-100">
+        No teacher profiles found. Add teachers above to assign classes.
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = teachers.map(t => {
+    const assignedNames = (t.assignedClassIds || []).map(cId => {
+      const found = allSchoolClasses.find(c => c.id === cId);
+      return found ? found.name : cId;
+    });
+
+    return `
+      <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div class="font-bold text-gray-900 text-base flex items-center gap-2">
+            ${escapeHTML(t.name)}
+            <span class="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold">Teacher</span>
+          </div>
+          <div class="text-xs text-gray-500 mt-0.5 font-mono">✉️ ${escapeHTML(t.email)} ${t.phone ? `• 📞 ${escapeHTML(t.phone)}` : ''} • <span class="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">UID: ${escapeHTML(t.id)}</span></div>
+          <div class="mt-2.5 flex flex-wrap gap-1.5">
+            ${assignedNames.length > 0 
+              ? assignedNames.map(cn => `<span class="px-2.5 py-1 rounded-lg text-xs bg-indigo-50 text-indigo-700 font-semibold">${escapeHTML(cn)}</span>`).join('')
+              : `<span class="text-xs text-amber-600 font-medium bg-amber-50 px-2 py-0.5 rounded-lg">No classes assigned</span>`
+            }
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="window.editTeacherClasses('${escapeHTML(t.id)}', '${encodeURIComponent(JSON.stringify(t.assignedClassIds || []))}')"
+                  class="px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-xs font-semibold text-gray-700 transition">
+            Edit Classes
+          </button>
+          <button onclick="window.deleteTeacherPrompt('${escapeHTML(t.id)}', this.dataset.name)"
+                  data-name="${escapeHTML(t.name)}"
+                  class="px-3 py-1.5 rounded-xl border border-rose-200 hover:bg-rose-50 text-xs font-semibold text-rose-600 transition">
+            Delete
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function loadTeachersList(forceRefresh = false) {
   const container = document.getElementById('teachers-list-container');
   const classCheckboxContainer = document.getElementById('teacher-class-checkboxes');
 
@@ -610,57 +696,21 @@ async function loadTeachersList() {
 
   if (!container) return;
 
+  // Use in-memory cache if available
+  if (!forceRefresh && cachedTeachersList) {
+    renderTeachersList(cachedTeachersList);
+    return;
+  }
+
   try {
     const q = query(collection(db, 'users'), where('role', '==', 'teacher'));
     const snap = await getDocs(q);
 
     const teachers = [];
     snap.forEach(d => teachers.push({ id: d.id, ...d.data() }));
+    cachedTeachersList = teachers;
 
-    if (teachers.length === 0) {
-      container.innerHTML = `
-        <div class="p-8 text-center text-gray-400 bg-white rounded-2xl border border-gray-100">
-          No teacher profiles found. Add teachers above to assign classes.
-        </div>
-      `;
-      return;
-    }
-
-    container.innerHTML = teachers.map(t => {
-      const assignedNames = (t.assignedClassIds || []).map(cId => {
-        const found = allSchoolClasses.find(c => c.id === cId);
-        return found ? found.name : cId;
-      });
-
-      return `
-        <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div class="font-bold text-gray-900 text-base flex items-center gap-2">
-              ${escapeHTML(t.name)}
-              <span class="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold">Teacher</span>
-            </div>
-            <div class="text-xs text-gray-500 mt-0.5 font-mono">✉️ ${escapeHTML(t.email)} ${t.phone ? `• 📞 ${escapeHTML(t.phone)}` : ''} • <span class="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">UID: ${escapeHTML(t.id)}</span></div>
-            <div class="mt-2.5 flex flex-wrap gap-1.5">
-              ${assignedNames.length > 0 
-                ? assignedNames.map(cn => `<span class="px-2.5 py-1 rounded-lg text-xs bg-indigo-50 text-indigo-700 font-semibold">${escapeHTML(cn)}</span>`).join('')
-                : `<span class="text-xs text-amber-600 font-medium bg-amber-50 px-2 py-0.5 rounded-lg">No classes assigned</span>`
-              }
-            </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <button onclick="window.editTeacherClasses('${escapeHTML(t.id)}', '${encodeURIComponent(JSON.stringify(t.assignedClassIds || []))}')"
-                    class="px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-xs font-semibold text-gray-700 transition">
-              Edit Classes
-            </button>
-            <button onclick="window.deleteTeacherPrompt('${escapeHTML(t.id)}', this.dataset.name)"
-                    data-name="${escapeHTML(t.name)}"
-                    class="px-3 py-1.5 rounded-xl border border-rose-200 hover:bg-rose-50 text-xs font-semibold text-rose-600 transition">
-              Delete
-            </button>
-          </div>
-        </div>
-      `;
-    }).join('');
+    renderTeachersList(teachers);
   } catch (error) {
     console.error('Error loading teachers:', error);
     showToast('Failed to load teachers: ' + error.message, 'error');
@@ -712,7 +762,8 @@ async function handleAddTeacherProfile(e) {
     if (phoneInput) phoneInput.value = '';
     selectedBoxes.forEach(b => b.checked = false);
 
-    await loadTeachersList();
+    cachedTeachersList = null;
+    await loadTeachersList(true);
   } catch (error) {
     console.error('Error creating teacher:', error);
     showToast('Failed to create teacher profile: ' + error.message, 'error');
@@ -736,7 +787,8 @@ window.editTeacherClasses = async function(teacherId, classIdsJson) {
       updatedAt: serverTimestamp()
     });
     showToast('Teacher class assignments updated!', 'success');
-    await loadTeachersList();
+    cachedTeachersList = null;
+    await loadTeachersList(true);
   } catch (error) {
     console.error('Error updating teacher:', error);
     showToast('Failed to update teacher: ' + error.message, 'error');
@@ -750,7 +802,8 @@ window.deleteTeacherPrompt = async function(teacherId, teacherName) {
   try {
     await deleteDoc(doc(db, 'users', teacherId));
     showToast(`Teacher profile "${displayName}" removed.`, 'info');
-    await loadTeachersList();
+    cachedTeachersList = null;
+    await loadTeachersList(true);
   } catch (error) {
     console.error('Error deleting teacher:', error);
     showToast('Failed to delete teacher: ' + error.message, 'error');
@@ -900,17 +953,26 @@ window.adminOpenAttendanceModal = async function(classId, dateStr) {
   modalBody.innerHTML = `<div class="p-8 text-center text-gray-500">Loading student attendance...</div>`;
 
   try {
-    // 1. Get students for class
-    const q = query(
-      collection(db, 'students'), 
-      where('classId', '==', classId),
-      where('status', '==', 'active')
-    );
-    const studentsSnap = await getDocs(q);
-    const students = [];
-    studentsSnap.forEach(d => students.push({ id: d.id, ...d.data() }));
-
-    students.sort((a, b) => parseInt(a.rollNo, 10) - parseInt(b.rollNo, 10));
+    // 1. Get students for class (check in-memory cache first to save quota)
+    let students = [];
+    if (classStudentsCache[classId]) {
+      students = [...classStudentsCache[classId]];
+    } else {
+      const q = query(
+        collection(db, 'students'), 
+        where('classId', '==', classId),
+        where('status', '==', 'active')
+      );
+      const studentsSnap = await getDocs(q);
+      studentsSnap.forEach(d => students.push({ id: d.id, ...d.data() }));
+      students.sort((a, b) => {
+        const numA = parseInt(a.rollNo, 10);
+        const numB = parseInt(b.rollNo, 10);
+        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+        return String(a.rollNo).localeCompare(String(b.rollNo));
+      });
+      classStudentsCache[classId] = [...students];
+    }
 
     // 2. Get attendance doc
     const docId = `${classId}_${dateStr}`;
@@ -1083,16 +1145,26 @@ async function generateMonthlyReport() {
   }
 
   try {
-    // 1. Fetch Students for this class (30-40 docs)
-    const qStudents = query(
-      collection(db, 'students'),
-      where('classId', '==', classId),
-      where('status', '==', 'active')
-    );
-    const snapStudents = await getDocs(qStudents);
-    const students = [];
-    snapStudents.forEach(d => students.push({ id: d.id, ...d.data() }));
-    students.sort((a, b) => parseInt(a.rollNo, 10) - parseInt(b.rollNo, 10));
+    // 1. Fetch Students for this class (reuse in-memory cache if already loaded)
+    let students = [];
+    if (classStudentsCache[classId]) {
+      students = [...classStudentsCache[classId]];
+    } else {
+      const qStudents = query(
+        collection(db, 'students'),
+        where('classId', '==', classId),
+        where('status', '==', 'active')
+      );
+      const snapStudents = await getDocs(qStudents);
+      snapStudents.forEach(d => students.push({ id: d.id, ...d.data() }));
+      students.sort((a, b) => {
+        const numA = parseInt(a.rollNo, 10);
+        const numB = parseInt(b.rollNo, 10);
+        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+        return String(a.rollNo).localeCompare(String(b.rollNo));
+      });
+      classStudentsCache[classId] = [...students];
+    }
     currentReportData.students = students;
 
     // 2. Fetch all attendance docs for this class and month (typically ~20-25 school days = 25 reads!)
@@ -1391,52 +1463,64 @@ function setupExamManagementListeners() {
   }
 }
 
-async function loadExamTermsList() {
+function renderExamTermsTable() {
   const tbody = document.getElementById('table-terms-body');
   if (!tbody) return;
+
+  if (allExamTerms.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="5" class="px-6 py-8 text-center text-slate-400">
+          No examination sessions created yet. Add your first term above.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = allExamTerms.map(t => {
+    const isPublished = (t.status === 'published');
+    return `
+      <tr class="border-b border-slate-100 hover:bg-slate-50/50 transition">
+        <td class="px-6 py-4 font-bold text-slate-900">${escapeHTML(t.name)}</td>
+        <td class="px-6 py-4 text-slate-600">${escapeHTML(t.academicYear || '2026-2027')}</td>
+        <td class="px-6 py-4">
+          <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${isPublished ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+            ${isPublished ? 'Published to Parents' : 'Draft (Teachers Only)'}
+          </span>
+        </td>
+        <td class="px-6 py-4 text-xs font-mono text-slate-400">${escapeHTML(t.id)}</td>
+        <td class="px-6 py-4 text-right space-x-2">
+          <button onclick="window.toggleTermStatus('${escapeHTML(t.id)}', '${isPublished ? 'draft' : 'published'}')" 
+                  class="px-3 py-1.5 rounded-xl border text-xs font-bold transition ${isPublished ? 'border-amber-200 text-amber-700 hover:bg-amber-50' : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'}">
+            ${isPublished ? 'Revert to Draft' : 'Publish Results'}
+          </button>
+          <button onclick="window.deleteTermPrompt('${escapeHTML(t.id)}', this.dataset.name)" 
+                  data-name="${escapeHTML(t.name)}"
+                  class="text-rose-600 hover:text-rose-800 text-xs font-semibold p-1 hover:bg-rose-50 rounded-lg transition">
+            Delete
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function loadExamTermsList(forceRefresh = false) {
+  const tbody = document.getElementById('table-terms-body');
+  if (!tbody) return;
+
+  if (!forceRefresh && allExamTerms.length > 0) {
+    renderExamTermsTable();
+    return;
+  }
 
   try {
     const snap = await getDocs(collection(db, 'terms'));
     allExamTerms = [];
     snap.forEach(d => allExamTerms.push({ id: d.id, ...d.data() }));
 
-    if (allExamTerms.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="5" class="px-6 py-8 text-center text-slate-400">
-            No examination sessions created yet. Add your first term above.
-          </td>
-        </tr>
-      `;
-      return;
-    }
-
-    tbody.innerHTML = allExamTerms.map(t => {
-      const isPublished = (t.status === 'published');
-      return `
-        <tr class="border-b border-slate-100 hover:bg-slate-50/50 transition">
-          <td class="px-6 py-4 font-bold text-slate-900">${escapeHTML(t.name)}</td>
-          <td class="px-6 py-4 text-slate-600">${escapeHTML(t.academicYear || '2026-2027')}</td>
-          <td class="px-6 py-4">
-            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${isPublished ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
-              ${isPublished ? 'Published to Parents' : 'Draft (Teachers Only)'}
-            </span>
-          </td>
-          <td class="px-6 py-4 text-xs font-mono text-slate-400">${escapeHTML(t.id)}</td>
-          <td class="px-6 py-4 text-right space-x-2">
-            <button onclick="window.toggleTermStatus('${escapeHTML(t.id)}', '${isPublished ? 'draft' : 'published'}')" 
-                    class="px-3 py-1.5 rounded-xl border text-xs font-bold transition ${isPublished ? 'border-amber-200 text-amber-700 hover:bg-amber-50' : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'}">
-              ${isPublished ? 'Revert to Draft' : 'Publish Results'}
-            </button>
-            <button onclick="window.deleteTermPrompt('${escapeHTML(t.id)}', this.dataset.name)" 
-                    data-name="${escapeHTML(t.name)}"
-                    class="text-rose-600 hover:text-rose-800 text-xs font-semibold p-1 hover:bg-rose-50 rounded-lg transition">
-              Delete
-            </button>
-          </td>
-        </tr>
-      `;
-    }).join('');
+    renderExamTermsTable();
   } catch (error) {
     console.error('Error loading exam terms:', error);
     showToast('Failed to load exam terms: ' + error.message, 'error');
@@ -1470,7 +1554,7 @@ async function handleAddTerm(e) {
 
     showToast(`Exam Term "${name}" created (in Draft status)!`, 'success');
     nameInput.value = '';
-    await loadExamTermsList();
+    await loadExamTermsList(true);
   } catch (error) {
     console.error('Error creating term:', error);
     showToast('Failed to create term: ' + error.message, 'error');
@@ -1509,7 +1593,7 @@ window.toggleTermStatus = async function(termId, newStatus) {
     }
 
     showToast(`Exam term status updated to "${newStatus.toUpperCase()}"!`, 'success');
-    await loadExamTermsList();
+    await loadExamTermsList(true);
   } catch (error) {
     console.error('Error toggling term status:', error);
     showToast('Failed to update term status: ' + error.message, 'error');
@@ -1524,7 +1608,7 @@ window.deleteTermPrompt = async function(termId, termName) {
   try {
     await deleteDoc(doc(db, 'terms', termId));
     showToast(`Term "${displayName}" deleted.`, 'info');
-    await loadExamTermsList();
+    await loadExamTermsList(true);
   } catch (error) {
     console.error('Error deleting term:', error);
     showToast('Failed to delete term: ' + error.message, 'error');
@@ -1550,7 +1634,6 @@ async function renderClassSubjectsForm() {
   if (!container || !selectedConfigClassId) return;
 
   try {
-    const snap = await getDoc(doc(db, 'classSubjects', selectedConfigClassId));
     let subjects = [
       { name: 'English', maxMarks: 100, passMarks: 33 },
       { name: 'Mathematics', maxMarks: 100, passMarks: 33 },
@@ -1559,8 +1642,14 @@ async function renderClassSubjectsForm() {
       { name: 'Islamiat', maxMarks: 50, passMarks: 17 }
     ];
 
-    if (snap.exists() && snap.data().subjects) {
-      subjects = snap.data().subjects;
+    if (classSubjectsCache[selectedConfigClassId]) {
+      subjects = classSubjectsCache[selectedConfigClassId];
+    } else {
+      const snap = await getDoc(doc(db, 'classSubjects', selectedConfigClassId));
+      if (snap.exists() && snap.data().subjects) {
+        subjects = snap.data().subjects;
+      }
+      classSubjectsCache[selectedConfigClassId] = subjects;
     }
 
     container.innerHTML = subjects.map((s, idx) => `
@@ -1590,7 +1679,7 @@ window.addSubjectRow = function() {
   div.className = 'flex items-center gap-2 p-2 bg-slate-50 rounded-xl border border-slate-200 subject-row';
   div.innerHTML = `
     <input type="text" name="sub_name" value="" required placeholder="New Subject Name"
-           class="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold outline-none">
+               class="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold outline-none">
     <input type="number" name="sub_max" value="100" min="1" max="1000" required placeholder="Max Marks"
            class="w-24 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-center outline-none">
     <input type="number" name="sub_pass" value="33" min="1" required placeholder="Passing"
@@ -1632,6 +1721,7 @@ async function handleSaveClassSubjects(e) {
       updatedAt: serverTimestamp()
     }, { merge: true });
 
+    classSubjectsCache[selectedConfigClassId] = subjects;
     showToast('Class subjects curriculum saved successfully!', 'success');
   } catch (error) {
     console.error('Error saving class subjects:', error);
@@ -1656,56 +1746,69 @@ function setupParentManagementListeners() {
   }
 }
 
-async function loadParentAccountsList() {
+function renderParentAccountsList(parents) {
   const container = document.getElementById('parents-list-container');
   if (!container) return;
+
+  if (parents.length === 0) {
+    container.innerHTML = `
+      <div class="p-8 text-center text-slate-400 bg-white rounded-2xl border border-slate-200">
+        No parent accounts registered yet. Use the form above to add a parent.
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = parents.map(p => {
+    const studentBadges = (p.linkedStudents || []).map(stdId => {
+      return `<span class="px-2 py-0.5 rounded-lg text-xs bg-emerald-50 text-emerald-800 font-bold border border-emerald-100">${escapeHTML(stdId)}</span>`;
+    });
+
+    return `
+      <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div class="font-bold text-slate-900 text-base flex items-center gap-2">
+            ${escapeHTML(p.name)}
+            <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-bold">Parent</span>
+          </div>
+          <div class="text-xs text-slate-500 mt-0.5 font-mono">
+            Login ID: <strong class="text-slate-800">${escapeHTML((p.email || '').replace('@school.local', ''))}</strong> (${escapeHTML(p.email)}) 
+            ${p.phone ? `• 📞 ${escapeHTML(p.phone)}` : ''} • UID: <span class="bg-slate-100 px-1 py-0.5 rounded text-[10px]">${escapeHTML(p.id)}</span>
+          </div>
+          <div class="mt-2.5 flex flex-wrap gap-1.5 items-center">
+            <span class="text-[10px] font-bold text-slate-400 uppercase">Linked Children:</span>
+            ${studentBadges.length > 0 ? studentBadges.join('') : `<span class="text-xs text-amber-600 font-medium">None</span>`}
+          </div>
+        </div>
+        <div>
+          <button onclick="window.deleteParentPrompt('${escapeHTML(p.id)}', this.dataset.name)"
+                  data-name="${escapeHTML(p.name)}"
+                  class="px-3 py-1.5 rounded-xl border border-rose-200 hover:bg-rose-50 text-xs font-semibold text-rose-600 transition">
+            Remove Account
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function loadParentAccountsList(forceRefresh = false) {
+  const container = document.getElementById('parents-list-container');
+  if (!container) return;
+
+  if (!forceRefresh && cachedParentsList) {
+    renderParentAccountsList(cachedParentsList);
+    return;
+  }
 
   try {
     const q = query(collection(db, 'users'), where('role', '==', 'parent'));
     const snap = await getDocs(q);
     const parents = [];
     snap.forEach(d => parents.push({ id: d.id, ...d.data() }));
+    cachedParentsList = parents;
 
-    if (parents.length === 0) {
-      container.innerHTML = `
-        <div class="p-8 text-center text-slate-400 bg-white rounded-2xl border border-slate-200">
-          No parent accounts registered yet. Use the form above to add a parent.
-        </div>
-      `;
-      return;
-    }
-
-    container.innerHTML = parents.map(p => {
-      const studentBadges = (p.linkedStudents || []).map(stdId => {
-        return `<span class="px-2 py-0.5 rounded-lg text-xs bg-emerald-50 text-emerald-800 font-bold border border-emerald-100">${escapeHTML(stdId)}</span>`;
-      });
-
-      return `
-        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div class="font-bold text-slate-900 text-base flex items-center gap-2">
-              ${escapeHTML(p.name)}
-              <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-bold">Parent</span>
-            </div>
-            <div class="text-xs text-slate-500 mt-0.5 font-mono">
-              Login ID: <strong class="text-slate-800">${escapeHTML((p.email || '').replace('@school.local', ''))}</strong> (${escapeHTML(p.email)}) 
-              ${p.phone ? `• 📞 ${escapeHTML(p.phone)}` : ''} • UID: <span class="bg-slate-100 px-1 py-0.5 rounded text-[10px]">${escapeHTML(p.id)}</span>
-            </div>
-            <div class="mt-2.5 flex flex-wrap gap-1.5 items-center">
-              <span class="text-[10px] font-bold text-slate-400 uppercase">Linked Children:</span>
-              ${studentBadges.length > 0 ? studentBadges.join('') : `<span class="text-xs text-amber-600 font-medium">None</span>`}
-            </div>
-          </div>
-          <div>
-            <button onclick="window.deleteParentPrompt('${escapeHTML(p.id)}', this.dataset.name)"
-                    data-name="${escapeHTML(p.name)}"
-                    class="px-3 py-1.5 rounded-xl border border-rose-200 hover:bg-rose-50 text-xs font-semibold text-rose-600 transition">
-              Remove Account
-            </button>
-          </div>
-        </div>
-      `;
-    }).join('');
+    renderParentAccountsList(parents);
   } catch (error) {
     console.error('Error loading parents:', error);
     showToast('Failed to load parent accounts: ' + error.message, 'error');
@@ -1716,9 +1819,13 @@ async function loadParentStudentSelector() {
   const classFilter = document.getElementById('parent-link-class-filter');
   if (!classFilter) return;
 
-  classFilter.innerHTML = `<option value="">-- All Classes (or Filter by Class) --</option>` + allSchoolClasses.map(c => `
+  classFilter.innerHTML = allSchoolClasses.map(c => `
     <option value="${escapeHTML(c.id)}">${escapeHTML(c.name)}</option>
   `).join('');
+
+  if (allSchoolClasses.length > 0) {
+    classFilter.value = allSchoolClasses[0].id;
+  }
 
   await filterStudentsForParentLinking();
 }
@@ -1726,25 +1833,41 @@ async function loadParentStudentSelector() {
 async function filterStudentsForParentLinking() {
   const classFilter = document.getElementById('parent-link-class-filter');
   const container = document.getElementById('parent-student-checkboxes');
-  const selectedClass = classFilter ? classFilter.value : '';
+  let selectedClass = classFilter ? classFilter.value : '';
 
   if (!container) return;
+
+  // Default to first class if none selected, avoiding unfiltered school-wide read of 1,300+ students!
+  if (!selectedClass && allSchoolClasses.length > 0) {
+    selectedClass = allSchoolClasses[0].id;
+    if (classFilter) classFilter.value = selectedClass;
+  }
+
+  if (!selectedClass) {
+    container.innerHTML = `<div class="col-span-full text-xs text-slate-400 p-2">Select a class above to link students.</div>`;
+    return;
+  }
+
   container.innerHTML = `<div class="col-span-full text-xs text-slate-400 p-2">Loading students...</div>`;
 
   try {
-    let q;
-    if (selectedClass) {
-      q = query(collection(db, 'students'), where('classId', '==', selectedClass), where('status', '==', 'active'));
+    let students = [];
+    if (classStudentsCache[selectedClass]) {
+      students = [...classStudentsCache[selectedClass]];
     } else {
-      // Limit to 40 for initial preview
-      q = query(collection(db, 'students'), where('status', '==', 'active'));
+      const q = query(collection(db, 'students'), where('classId', '==', selectedClass), where('status', '==', 'active'));
+      const snap = await getDocs(q);
+      snap.forEach(d => students.push({ id: d.id, ...d.data() }));
+      students.sort((a, b) => {
+        const numA = parseInt(a.rollNo, 10);
+        const numB = parseInt(b.rollNo, 10);
+        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+        return String(a.rollNo).localeCompare(String(b.rollNo));
+      });
+      classStudentsCache[selectedClass] = [...students];
     }
-    const snap = await getDocs(q);
 
-    parentSelectorStudents = [];
-    snap.forEach(d => parentSelectorStudents.push({ id: d.id, ...d.data() }));
-
-    parentSelectorStudents.sort((a, b) => parseInt(a.rollNo, 10) - parseInt(b.rollNo, 10));
+    parentSelectorStudents = students;
 
     if (parentSelectorStudents.length === 0) {
       container.innerHTML = `<div class="col-span-full text-xs text-slate-400 p-2">No students found for this class.</div>`;
@@ -1810,7 +1933,8 @@ async function handleAddParent(e) {
     if (phoneInput) phoneInput.value = '';
     selectedBoxes.forEach(b => b.checked = false);
 
-    await loadParentAccountsList();
+    cachedParentsList = null;
+    await loadParentAccountsList(true);
   } catch (error) {
     console.error('Error creating parent account:', error);
     showToast('Failed to create parent account: ' + error.message, 'error');
@@ -1824,7 +1948,8 @@ window.deleteParentPrompt = async function(parentId, parentName) {
   try {
     await deleteDoc(doc(db, 'users', parentId));
     showToast(`Parent account "${displayName}" removed.`, 'info');
-    await loadParentAccountsList();
+    cachedParentsList = null;
+    await loadParentAccountsList(true);
   } catch (error) {
     console.error('Error deleting parent:', error);
     showToast('Failed to remove parent: ' + error.message, 'error');
