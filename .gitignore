@@ -1,0 +1,56 @@
+# =====================================================================
+# The Country School ShahJamal - Security & Git Exclusion Rules
+# Strictly blocks credentials, student data exports, backups, and OS temp files
+# =====================================================================
+
+# 1. Student Data, Spreadsheets & CSV Imports/Exports
+*.csv
+*.xlsx
+*.xls
+
+# 2. Database Backups, Dumps & Firestore Exports
+*backup*.json
+*export*.json
+firestore-export*
+*.dump
+*.sql
+*.sqlite
+
+# 3. Environment Secrets, Keys & Firebase Service Account Credentials
+.env
+.env.*
+serviceAccountKey*.json
+*serviceAccount*.json
+*credentials*.json
+*.pem
+*.key
+
+# 4. Operating System & File System Cache Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# 5. Editor, IDE & Workspace Settings
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.bak
+
+# 6. Temporary Logs & Scratch Directories
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+scratch/
+tmp/
+temp/
+node_modules/
