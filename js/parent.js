@@ -5,7 +5,7 @@
  * Optimized for mobile touchscreens, multi-child switching, and zero-cost Firestore reads
  */
 
-import { db } from './firebase-config.js';
+import { db } from './firebase-config.js?v=1.0.1';
 import { 
   doc, 
   getDoc, 
@@ -17,7 +17,8 @@ import {
 import { 
   formatReadableDate, 
   calculateGrade, 
-  showToast 
+  showToast,
+  escapeHTML 
 } from './utils.js';
 
 let parentUser = null;
@@ -117,10 +118,10 @@ function renderChildSwitcher() {
     <div class="flex items-center gap-2 overflow-x-auto pb-1">
       <span class="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1">Children:</span>
       ${linkedStudentsList.map((child, idx) => `
-        <button onclick="window.switchParentChild('${child.id}')"
-                id="btn-child-tab-${child.id}"
+        <button onclick="window.switchParentChild('${escapeHTML(child.id)}')"
+                id="btn-child-tab-${escapeHTML(child.id)}"
                 class="px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${idx === 0 ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'}">
-          ${child.name} (${child.rollNo})
+          ${escapeHTML(child.name)} (${escapeHTML(child.rollNo)})
         </button>
       `).join('')}
     </div>
@@ -252,7 +253,7 @@ async function loadPublishedTerms() {
     }
 
     termSelect.innerHTML = publishedTerms.map(t => 
-      `<option value="${t.id}">${t.name} (${t.academicYear || '2026-2027'})</option>`
+      `<option value="${escapeHTML(t.id)}">${escapeHTML(t.name)} (${escapeHTML(t.academicYear || '2026-2027')})</option>`
     ).join('');
 
     selectedTermId = publishedTerms[0].id;
@@ -312,7 +313,7 @@ function renderNoReportCard(message) {
     container.innerHTML = `
       <div class="p-12 text-center text-slate-400 bg-white rounded-3xl border border-slate-200">
         <svg class="w-12 h-12 mx-auto text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-        <p class="font-bold text-slate-700 text-sm">${message}</p>
+        <p class="font-bold text-slate-700 text-sm">${escapeHTML(message)}</p>
         <p class="text-xs text-slate-400 mt-1">Please check back once the school administration issues the results.</p>
       </div>
     `;
@@ -343,12 +344,12 @@ function renderOfficialReportCard(resultData) {
           <div>
             <h2 class="text-xl sm:text-2xl font-black text-slate-900 leading-tight">The Country School</h2>
             <p class="text-xs font-bold text-indigo-600 uppercase tracking-widest">ShahJamal Campus • Student Examination Report</p>
-            <p class="text-xs text-slate-500 font-medium">${resultData.termName || 'Term Examination'} (${resultData.academicYear || '2026-2027'})</p>
+            <p class="text-xs text-slate-500 font-medium">${escapeHTML(resultData.termName || 'Term Examination')} (${escapeHTML(resultData.academicYear || '2026-2027')})</p>
           </div>
         </div>
         <div class="px-4 py-2 rounded-2xl ${isPassed ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' : 'bg-rose-50 border border-rose-200 text-rose-800'} text-center font-bold">
           <span class="block text-[10px] uppercase tracking-wider">Result Status</span>
-          <span class="text-base font-black">${resultData.overallResult || 'PASS'}</span>
+          <span class="text-base font-black">${escapeHTML(resultData.overallResult || 'PASS')}</span>
         </div>
       </div>
 
@@ -356,19 +357,19 @@ function renderOfficialReportCard(resultData) {
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-slate-50 rounded-2xl mb-6 text-xs">
         <div>
           <span class="text-slate-400 block text-[10px] uppercase font-bold">Student Name</span>
-          <span class="font-extrabold text-slate-900 text-sm">${resultData.studentName}</span>
+          <span class="font-extrabold text-slate-900 text-sm">${escapeHTML(resultData.studentName)}</span>
         </div>
         <div>
           <span class="text-slate-400 block text-[10px] uppercase font-bold">Roll Number</span>
-          <span class="font-extrabold text-slate-900 text-sm">${resultData.rollNo}</span>
+          <span class="font-extrabold text-slate-900 text-sm">${escapeHTML(resultData.rollNo)}</span>
         </div>
         <div>
           <span class="text-slate-400 block text-[10px] uppercase font-bold">Class / Section</span>
-          <span class="font-extrabold text-slate-900 text-sm">${resultData.className}</span>
+          <span class="font-extrabold text-slate-900 text-sm">${escapeHTML(resultData.className)}</span>
         </div>
         <div>
           <span class="text-slate-400 block text-[10px] uppercase font-bold">Overall Grade</span>
-          <span class="font-black text-indigo-700 text-sm">${resultData.overallGrade} (${resultData.percentage}%)</span>
+          <span class="font-black text-indigo-700 text-sm">${escapeHTML(resultData.overallGrade)} (${Number(resultData.percentage) || 0}%)</span>
         </div>
       </div>
 
@@ -393,11 +394,11 @@ function renderOfficialReportCard(resultData) {
 
               return `
                 <tr class="hover:bg-slate-50/50 transition">
-                  <td class="px-4 py-3 font-bold text-slate-800">${s.name}</td>
-                  <td class="px-4 py-3 text-center text-slate-600">${s.maxMarks}</td>
-                  <td class="px-4 py-3 text-center text-slate-400 font-mono">${passMarks}</td>
-                  <td class="px-4 py-3 text-center font-extrabold text-slate-900 text-sm">${s.obtainedMarks}</td>
-                  <td class="px-4 py-3 text-center font-bold text-indigo-700">${subGrade}</td>
+                  <td class="px-4 py-3 font-bold text-slate-800">${escapeHTML(s.name)}</td>
+                  <td class="px-4 py-3 text-center text-slate-600">${Number(s.maxMarks) || 0}</td>
+                  <td class="px-4 py-3 text-center text-slate-400 font-mono">${Number(passMarks) || 0}</td>
+                  <td class="px-4 py-3 text-center font-extrabold text-slate-900 text-sm">${Number(s.obtainedMarks) || 0}</td>
+                  <td class="px-4 py-3 text-center font-bold text-indigo-700">${escapeHTML(subGrade)}</td>
                   <td class="px-4 py-3 text-center">
                     <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${isSubPass ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
                       ${isSubPass ? 'PASS' : 'FAIL'}
@@ -410,11 +411,11 @@ function renderOfficialReportCard(resultData) {
           <tfoot class="bg-slate-50 font-extrabold border-t-2 border-slate-200 text-slate-900">
             <tr>
               <td class="px-4 py-3">Grand Total</td>
-              <td class="px-4 py-3 text-center">${resultData.totalMaxMarks}</td>
+              <td class="px-4 py-3 text-center">${Number(resultData.totalMaxMarks) || 0}</td>
               <td class="px-4 py-3 text-center">—</td>
-              <td class="px-4 py-3 text-center text-base text-indigo-700">${resultData.totalObtainedMarks}</td>
-              <td class="px-4 py-3 text-center text-indigo-700">${resultData.overallGrade}</td>
-              <td class="px-4 py-3 text-center">${resultData.percentage}%</td>
+              <td class="px-4 py-3 text-center text-base text-indigo-700">${Number(resultData.totalObtainedMarks) || 0}</td>
+              <td class="px-4 py-3 text-center text-indigo-700">${escapeHTML(resultData.overallGrade)}</td>
+              <td class="px-4 py-3 text-center">${Number(resultData.percentage) || 0}%</td>
             </tr>
           </tfoot>
         </table>
@@ -424,7 +425,7 @@ function renderOfficialReportCard(resultData) {
       <div class="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100 mb-8">
         <span class="block text-[10px] uppercase font-bold text-indigo-600 mb-1">Teacher's Observations & Remarks:</span>
         <p class="text-xs font-semibold text-slate-800 italic">
-          "${resultData.remarks || 'Diligent effort demonstrated during this examination term. Continuous practice recommended.'}"
+          "${escapeHTML(resultData.remarks || 'Diligent effort demonstrated during this examination term. Continuous practice recommended.')}"
         </p>
       </div>
 

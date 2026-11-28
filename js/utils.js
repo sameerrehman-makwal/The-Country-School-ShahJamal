@@ -3,6 +3,24 @@
  */
 
 /**
+ * Safely escapes HTML special characters to prevent XSS / HTML injection.
+ * Converts &, <, >, ", and ' into their respective HTML entities.
+ */
+export function escapeHTML(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+if (typeof window !== 'undefined') {
+  window.escapeHTML = escapeHTML;
+}
+
+/**
  * Returns today's date formatted as YYYY-MM-DD in local time
  * Avoids UTC timezone conversion shifts.
  */
@@ -124,7 +142,7 @@ export function showToast(message, type = 'info', duration = 3500) {
   toast.className += ` ${colors[type] || colors.info}`;
   toast.innerHTML = `
     ${icons[type] || icons.info}
-    <div class="flex-1">${message}</div>
+    <div class="flex-1">${escapeHTML(message)}</div>
     <button class="text-gray-400 hover:text-gray-600 focus:outline-none" onclick="this.parentElement.remove()">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
     </button>

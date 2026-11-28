@@ -5,7 +5,7 @@
  * Optimized for low-cost Firestore operations and bulk data management
  */
 
-import { db, auth } from './firebase-config.js';
+import { db, auth } from './firebase-config.js?v=1.0.1';
 import { 
   collection, 
   doc, 
@@ -28,7 +28,8 @@ import {
   createLowAttendanceWhatsAppLink, 
   createWhatsAppLink,
   normalizeLoginIdentifier,
-  showToast 
+  showToast,
+  escapeHTML 
 } from './utils.js';
 
 let adminUser = null;
@@ -167,16 +168,17 @@ function renderClassesTable() {
 
   tbody.innerHTML = allSchoolClasses.map(c => `
     <tr class="border-b border-gray-100 hover:bg-gray-50/50 transition">
-      <td class="px-6 py-4 font-bold text-gray-900">${c.name}</td>
-      <td class="px-6 py-4 text-gray-600">Grade ${c.grade}</td>
-      <td class="px-6 py-4 text-gray-600">Section ${c.section}</td>
+      <td class="px-6 py-4 font-bold text-gray-900">${escapeHTML(c.name)}</td>
+      <td class="px-6 py-4 text-gray-600">Grade ${escapeHTML(c.grade)}</td>
+      <td class="px-6 py-4 text-gray-600">Section ${escapeHTML(c.section)}</td>
       <td class="px-6 py-4">
         <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700">
-          ${c.studentCount || 0} Students
+          ${Number(c.studentCount) || 0} Students
         </span>
       </td>
       <td class="px-6 py-4 text-right space-x-2">
-        <button onclick="window.deleteClassPrompt('${c.id}', '${c.name}')" 
+        <button onclick="window.deleteClassPrompt('${escapeHTML(c.id)}', this.dataset.name)" 
+                data-name="${escapeHTML(c.name)}"
                 class="text-rose-600 hover:text-rose-800 text-xs font-semibold p-1 hover:bg-rose-50 rounded-lg transition">
           Delete
         </button>
@@ -228,13 +230,15 @@ async function handleAddClass(e) {
 }
 
 window.deleteClassPrompt = async function(classId, className) {
-  if (!confirm(`Are you sure you want to delete "${className}"? Note: Deleting a class does not automatically delete students assigned to it.`)) {
+  const targetClass = allSchoolClasses.find(c => c.id === classId);
+  const displayName = className || (targetClass ? targetClass.name : 'this class');
+  if (!confirm(`Are you sure you want to delete "${displayName}"? Note: Deleting a class does not automatically delete students assigned to it.`)) {
     return;
   }
 
   try {
     await deleteDoc(doc(db, 'classes', classId));
-    showToast(`Class "${className}" deleted.`, 'info');
+    showToast(`Class "${displayName}" deleted.`, 'info');
     await loadAllClasses();
   } catch (error) {
     console.error('Error deleting class:', error);
@@ -278,7 +282,7 @@ function refreshStudentClassDropdown() {
   const csvClassDropdown = document.getElementById('csv-target-class');
 
   const optionsHtml = allSchoolClasses.map(c => 
-    `<option value="${c.id}">${c.name} (${c.studentCount || 0} stds)</option>`
+    `<option value="${escapeHTML(c.id)}">${escapeHTML(c.name)} (${Number(c.studentCount) || 0} stds)</option>`
   ).join('');
 
   if (dropdown) {
@@ -375,15 +379,16 @@ function renderAdminStudentsTable() {
 
   tbody.innerHTML = currentAdminClassStudents.map(s => `
     <tr class="border-b border-gray-100 hover:bg-gray-50/50 transition">
-      <td class="px-6 py-4 font-bold text-gray-900">${s.rollNo}</td>
-      <td class="px-6 py-4 font-semibold text-gray-800">${s.name}</td>
-      <td class="px-6 py-4 text-gray-600">${s.fatherName || '—'}</td>
+      <td class="px-6 py-4 font-bold text-gray-900">${escapeHTML(s.rollNo)}</td>
+      <td class="px-6 py-4 font-semibold text-gray-800">${escapeHTML(s.name)}</td>
+      <td class="px-6 py-4 text-gray-600">${s.fatherName ? escapeHTML(s.fatherName) : '—'}</td>
       <td class="px-6 py-4 text-gray-600">
-        ${s.parentPhone ? `<span class="font-mono text-xs">📞 ${s.parentPhone}</span>` : '<span class="text-gray-400 text-xs">None</span>'}
+        ${s.parentPhone ? `<span class="font-mono text-xs">📞 ${escapeHTML(s.parentPhone)}</span>` : '<span class="text-gray-400 text-xs">None</span>'}
       </td>
-      <td class="px-6 py-4 text-gray-600">${s.gender || '—'}</td>
+      <td class="px-6 py-4 text-gray-600">${s.gender ? escapeHTML(s.gender) : '—'}</td>
       <td class="px-6 py-4 text-right space-x-2">
-        <button onclick="window.deleteStudentPrompt('${s.id}', '${s.name}', '${s.classId}')" 
+        <button onclick="window.deleteStudentPrompt('${escapeHTML(s.id)}', this.dataset.name, '${escapeHTML(s.classId)}')" 
+                data-name="${escapeHTML(s.name)}"
                 class="text-rose-600 hover:text-rose-800 text-xs font-semibold p-1 hover:bg-rose-50 rounded-lg transition">
           Remove
         </button>
@@ -446,14 +451,16 @@ async function handleAddSingleStudent(e) {
 }
 
 window.deleteStudentPrompt = async function(studentId, studentName, classId) {
-  if (!confirm(`Are you sure you want to remove student "${studentName}"?`)) {
+  const targetStudent = currentAdminClassStudents.find(s => s.id === studentId);
+  const displayName = studentName || (targetStudent ? targetStudent.name : 'this student');
+  if (!confirm(`Are you sure you want to remove student "${displayName}"?`)) {
     return;
   }
 
   try {
     // Soft delete by setting status: 'inactive'
     await updateDoc(doc(db, 'students', studentId), { status: 'inactive' });
-    showToast(`Student "${studentName}" removed.`, 'info');
+    showToast(`Student "${displayName}" removed.`, 'info');
     await loadStudentsForAdminClass(classId);
     await loadAllClasses();
   } catch (error) {
@@ -488,11 +495,11 @@ function handleCSVFileSelect(e) {
       if (previewTbody) {
         previewTbody.innerHTML = parsedCSVStudents.slice(0, 10).map(s => `
           <tr class="border-b border-gray-100 text-xs">
-            <td class="px-3 py-2 font-bold">${s.rollNo}</td>
-            <td class="px-3 py-2 font-medium">${s.name}</td>
-            <td class="px-3 py-2">${s.fatherName}</td>
-            <td class="px-3 py-2 font-mono">${s.parentPhone}</td>
-            <td class="px-3 py-2">${s.gender}</td>
+            <td class="px-3 py-2 font-bold">${escapeHTML(s.rollNo)}</td>
+            <td class="px-3 py-2 font-medium">${escapeHTML(s.name)}</td>
+            <td class="px-3 py-2">${escapeHTML(s.fatherName)}</td>
+            <td class="px-3 py-2 font-mono">${escapeHTML(s.parentPhone)}</td>
+            <td class="px-3 py-2">${escapeHTML(s.gender)}</td>
           </tr>
         `).join('') + (parsedCSVStudents.length > 10 ? `<tr><td colspan="5" class="px-3 py-2 text-center text-gray-400 text-xs font-italic">...and ${parsedCSVStudents.length - 10} more rows</td></tr>` : '');
       }
@@ -595,8 +602,8 @@ async function loadTeachersList() {
   if (classCheckboxContainer) {
     classCheckboxContainer.innerHTML = allSchoolClasses.map(c => `
       <label class="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded-xl cursor-pointer text-xs font-medium text-gray-700">
-        <input type="checkbox" name="assignClass" value="${c.id}" class="rounded text-indigo-600 focus:ring-indigo-500">
-        <span>${c.name}</span>
+        <input type="checkbox" name="assignClass" value="${escapeHTML(c.id)}" class="rounded text-indigo-600 focus:ring-indigo-500">
+        <span>${escapeHTML(c.name)}</span>
       </label>
     `).join('');
   }
@@ -629,23 +636,24 @@ async function loadTeachersList() {
         <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div class="font-bold text-gray-900 text-base flex items-center gap-2">
-              ${t.name}
+              ${escapeHTML(t.name)}
               <span class="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold">Teacher</span>
             </div>
-            <div class="text-xs text-gray-500 mt-0.5 font-mono">✉️ ${t.email} ${t.phone ? `• 📞 ${t.phone}` : ''} • <span class="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">UID: ${t.id}</span></div>
+            <div class="text-xs text-gray-500 mt-0.5 font-mono">✉️ ${escapeHTML(t.email)} ${t.phone ? `• 📞 ${escapeHTML(t.phone)}` : ''} • <span class="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">UID: ${escapeHTML(t.id)}</span></div>
             <div class="mt-2.5 flex flex-wrap gap-1.5">
               ${assignedNames.length > 0 
-                ? assignedNames.map(cn => `<span class="px-2.5 py-1 rounded-lg text-xs bg-indigo-50 text-indigo-700 font-semibold">${cn}</span>`).join('')
+                ? assignedNames.map(cn => `<span class="px-2.5 py-1 rounded-lg text-xs bg-indigo-50 text-indigo-700 font-semibold">${escapeHTML(cn)}</span>`).join('')
                 : `<span class="text-xs text-amber-600 font-medium bg-amber-50 px-2 py-0.5 rounded-lg">No classes assigned</span>`
               }
             </div>
           </div>
           <div class="flex items-center gap-2">
-            <button onclick="window.editTeacherClasses('${t.id}', '${encodeURIComponent(JSON.stringify(t.assignedClassIds || []))}')"
+            <button onclick="window.editTeacherClasses('${escapeHTML(t.id)}', '${encodeURIComponent(JSON.stringify(t.assignedClassIds || []))}')"
                     class="px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-xs font-semibold text-gray-700 transition">
               Edit Classes
             </button>
-            <button onclick="window.deleteTeacherPrompt('${t.id}', '${t.name}')"
+            <button onclick="window.deleteTeacherPrompt('${escapeHTML(t.id)}', this.dataset.name)"
+                    data-name="${escapeHTML(t.name)}"
                     class="px-3 py-1.5 rounded-xl border border-rose-200 hover:bg-rose-50 text-xs font-semibold text-rose-600 transition">
               Delete
             </button>
@@ -736,11 +744,12 @@ window.editTeacherClasses = async function(teacherId, classIdsJson) {
 };
 
 window.deleteTeacherPrompt = async function(teacherId, teacherName) {
-  if (!confirm(`Are you sure you want to delete profile for "${teacherName}"?`)) return;
+  const displayName = teacherName || 'this teacher';
+  if (!confirm(`Are you sure you want to delete profile for "${displayName}"?`)) return;
 
   try {
     await deleteDoc(doc(db, 'users', teacherId));
-    showToast(`Teacher profile "${teacherName}" removed.`, 'info');
+    showToast(`Teacher profile "${displayName}" removed.`, 'info');
     await loadTeachersList();
   } catch (error) {
     console.error('Error deleting teacher:', error);
@@ -815,13 +824,13 @@ async function loadDailyOverview() {
         <div class="bg-white rounded-2xl p-5 border ${isMarked ? 'border-emerald-100 shadow-sm' : 'border-amber-100 bg-amber-50/20'} flex flex-col justify-between">
           <div>
             <div class="flex items-center justify-between mb-2">
-              <h4 class="font-bold text-gray-900">${cls.name}</h4>
+              <h4 class="font-bold text-gray-900">${escapeHTML(cls.name)}</h4>
               ${isMarked 
                 ? `<span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">Marked (${percent}%)</span>` 
                 : `<span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">Pending</span>`
               }
             </div>
-            <div class="text-xs text-gray-500 mb-3">Marked by: <span class="font-medium text-gray-700">${markedByName}</span></div>
+            <div class="text-xs text-gray-500 mb-3">Marked by: <span class="font-medium text-gray-700">${escapeHTML(markedByName)}</span></div>
 
             <div class="grid grid-cols-4 gap-1 text-center py-2 bg-gray-50 rounded-xl mb-3 text-xs">
               <div>
@@ -843,7 +852,7 @@ async function loadDailyOverview() {
             </div>
           </div>
 
-          <button onclick="window.adminOpenAttendanceModal('${cls.id}', '${selectedDate}')"
+          <button onclick="window.adminOpenAttendanceModal('${escapeHTML(cls.id)}', '${escapeHTML(selectedDate)}')"
                   class="w-full mt-2 py-1.5 px-3 rounded-xl text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition">
             ${isMarked ? 'Review / Edit Attendance' : 'Mark Attendance (Admin Override)'}
           </button>
@@ -909,7 +918,7 @@ window.adminOpenAttendanceModal = async function(classId, dateStr) {
     const records = attSnap.exists() ? (attSnap.data().records || {}) : {};
 
     let html = `
-      <form id="form-admin-attendance-override" onsubmit="window.saveAdminAttendanceOverride(event, '${classId}', '${dateStr}')">
+      <form id="form-admin-attendance-override" onsubmit="window.saveAdminAttendanceOverride(event, '${escapeHTML(classId)}', '${escapeHTML(dateStr)}')">
         <div class="space-y-3 max-h-96 overflow-y-auto p-1">
     `;
 
@@ -919,15 +928,15 @@ window.adminOpenAttendanceModal = async function(classId, dateStr) {
         <div class="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100">
           <div class="flex items-center gap-3">
             <span class="w-8 h-8 rounded-lg bg-white flex items-center justify-center font-bold text-xs text-gray-700 shadow-sm">
-              ${s.rollNo}
+              ${escapeHTML(s.rollNo)}
             </span>
             <div>
-              <div class="font-bold text-gray-800 text-sm">${s.name}</div>
-              <div class="text-[11px] text-gray-400">S/O ${s.fatherName || '—'}</div>
+              <div class="font-bold text-gray-800 text-sm">${escapeHTML(s.name)}</div>
+              <div class="text-[11px] text-gray-400">S/O ${s.fatherName ? escapeHTML(s.fatherName) : '—'}</div>
             </div>
           </div>
           <div class="flex items-center gap-2">
-            <select name="status_${s.id}" class="text-xs font-bold rounded-lg border-gray-200 bg-white p-1.5 focus:ring-indigo-500">
+            <select name="status_${escapeHTML(s.id)}" class="text-xs font-bold rounded-lg border-gray-200 bg-white p-1.5 focus:ring-indigo-500">
               <option value="P" ${rec.status === 'P' ? 'selected' : ''}>Present</option>
               <option value="A" ${rec.status === 'A' ? 'selected' : ''}>Absent</option>
               <option value="L" ${rec.status === 'L' ? 'selected' : ''}>Late</option>
@@ -956,7 +965,7 @@ window.adminOpenAttendanceModal = async function(classId, dateStr) {
     modalBody.innerHTML = html;
   } catch (error) {
     console.error('Error opening override modal:', error);
-    modalBody.innerHTML = `<div class="p-6 text-center text-rose-600 text-sm">Failed to load attendance: ${error.message}</div>`;
+    modalBody.innerHTML = `<div class="p-6 text-center text-rose-600 text-sm">Failed to load attendance: ${escapeHTML(error.message)}</div>`;
   }
 };
 
@@ -1042,7 +1051,7 @@ function refreshReportClassDropdown() {
   const dropdown = document.getElementById('report-class-select');
   if (dropdown) {
     dropdown.innerHTML = allSchoolClasses.map(c => 
-      `<option value="${c.id}">${c.name}</option>`
+      `<option value="${escapeHTML(c.id)}">${escapeHTML(c.name)}</option>`
     ).join('');
   }
 }
@@ -1068,7 +1077,7 @@ async function generateMonthlyReport() {
     reportContainer.innerHTML = `
       <div class="p-12 text-center text-gray-500">
         <svg class="animate-spin h-6 w-6 text-indigo-600 mx-auto mb-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-        Generating report for ${classObj.name} (${monthStr})...
+        Generating report for ${escapeHTML(classObj.name)} (${escapeHTML(monthStr)})...
       </div>
     `;
   }
@@ -1159,8 +1168,8 @@ function renderReportView() {
     <!-- Action Controls & Header -->
     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
       <div>
-        <h3 class="text-xl font-bold text-gray-900">${classObj.name} — Monthly Attendance Register</h3>
-        <p class="text-xs text-gray-500 mt-1">Month: <span class="font-semibold text-gray-700">${monthStr}</span> • Working Days: <span class="font-semibold text-gray-700">${dates.length}</span> • Total Students: <span class="font-semibold text-gray-700">${students.length}</span></p>
+        <h3 class="text-xl font-bold text-gray-900">${escapeHTML(classObj.name)} — Monthly Attendance Register</h3>
+        <p class="text-xs text-gray-500 mt-1">Month: <span class="font-semibold text-gray-700">${escapeHTML(monthStr)}</span> • Working Days: <span class="font-semibold text-gray-700">${dates.length}</span> • Total Students: <span class="font-semibold text-gray-700">${students.length}</span></p>
       </div>
       <div class="flex items-center gap-2 print:hidden">
         <button id="btn-export-report-csv" onclick="window.triggerReportCSVDownload()"
@@ -1197,11 +1206,11 @@ function renderReportView() {
             return `
               <div class="bg-white p-3 rounded-xl border border-rose-100 flex items-center justify-between gap-2 shadow-xs">
                 <div>
-                  <div class="font-bold text-gray-800 text-xs">${s.rollNo}. ${s.name}</div>
+                  <div class="font-bold text-gray-800 text-xs">${escapeHTML(s.rollNo)}. ${escapeHTML(s.name)}</div>
                   <div class="text-[11px] text-rose-600 font-semibold">${stat.percent}% (${stat.present}/${stat.totalSchoolDays} days)</div>
                 </div>
                 ${waLink ? `
-                  <a href="${waLink}" target="_blank" rel="noopener noreferrer"
+                  <a href="${escapeHTML(waLink)}" target="_blank" rel="noopener noreferrer"
                      title="Send WhatsApp Low-Attendance Warning"
                      class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-[10px] font-bold inline-flex items-center gap-1 flex-shrink-0 transition">
                     Notify
@@ -1239,8 +1248,8 @@ function renderReportView() {
 
     html += `
       <tr class="hover:bg-gray-50/70 transition ${isLow ? 'bg-rose-50/20' : ''}">
-        <td class="px-3 py-2 text-center font-bold text-gray-700 border-r border-gray-200 sticky left-0 bg-white">${s.rollNo}</td>
-        <td class="px-4 py-2 font-medium text-gray-900 border-r border-gray-200 sticky left-12 bg-white truncate max-w-[140px]">${s.name}</td>
+        <td class="px-3 py-2 text-center font-bold text-gray-700 border-r border-gray-200 sticky left-0 bg-white">${escapeHTML(s.rollNo)}</td>
+        <td class="px-4 py-2 font-medium text-gray-900 border-r border-gray-200 sticky left-12 bg-white truncate max-w-[140px]">${escapeHTML(s.name)}</td>
         ${dates.map(d => {
           const rec = currentReportData.attendanceMap[d] ? currentReportData.attendanceMap[d][s.id] : null;
           const status = rec ? rec.status : '—';
@@ -1406,20 +1415,21 @@ async function loadExamTermsList() {
       const isPublished = (t.status === 'published');
       return `
         <tr class="border-b border-slate-100 hover:bg-slate-50/50 transition">
-          <td class="px-6 py-4 font-bold text-slate-900">${t.name}</td>
-          <td class="px-6 py-4 text-slate-600">${t.academicYear || '2026-2027'}</td>
+          <td class="px-6 py-4 font-bold text-slate-900">${escapeHTML(t.name)}</td>
+          <td class="px-6 py-4 text-slate-600">${escapeHTML(t.academicYear || '2026-2027')}</td>
           <td class="px-6 py-4">
             <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${isPublished ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
               ${isPublished ? 'Published to Parents' : 'Draft (Teachers Only)'}
             </span>
           </td>
-          <td class="px-6 py-4 text-xs font-mono text-slate-400">${t.id}</td>
+          <td class="px-6 py-4 text-xs font-mono text-slate-400">${escapeHTML(t.id)}</td>
           <td class="px-6 py-4 text-right space-x-2">
-            <button onclick="window.toggleTermStatus('${t.id}', '${isPublished ? 'draft' : 'published'}')" 
+            <button onclick="window.toggleTermStatus('${escapeHTML(t.id)}', '${isPublished ? 'draft' : 'published'}')" 
                     class="px-3 py-1.5 rounded-xl border text-xs font-bold transition ${isPublished ? 'border-amber-200 text-amber-700 hover:bg-amber-50' : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'}">
               ${isPublished ? 'Revert to Draft' : 'Publish Results'}
             </button>
-            <button onclick="window.deleteTermPrompt('${t.id}', '${t.name}')" 
+            <button onclick="window.deleteTermPrompt('${escapeHTML(t.id)}', this.dataset.name)" 
+                    data-name="${escapeHTML(t.name)}"
                     class="text-rose-600 hover:text-rose-800 text-xs font-semibold p-1 hover:bg-rose-50 rounded-lg transition">
               Delete
             </button>
@@ -1507,11 +1517,13 @@ window.toggleTermStatus = async function(termId, newStatus) {
 };
 
 window.deleteTermPrompt = async function(termId, termName) {
-  if (!confirm(`Are you sure you want to delete "${termName}"?`)) return;
+  const targetTerm = allExamTerms.find(t => t.id === termId);
+  const displayName = termName || (targetTerm ? targetTerm.name : 'this term');
+  if (!confirm(`Are you sure you want to delete "${displayName}"?`)) return;
 
   try {
     await deleteDoc(doc(db, 'terms', termId));
-    showToast(`Term "${termName}" deleted.`, 'info');
+    showToast(`Term "${displayName}" deleted.`, 'info');
     await loadExamTermsList();
   } catch (error) {
     console.error('Error deleting term:', error);
@@ -1524,7 +1536,7 @@ async function loadClassSubjectConfig() {
   if (!classSelect) return;
 
   classSelect.innerHTML = allSchoolClasses.map(c => `
-    <option value="${c.id}">${c.name}</option>
+    <option value="${escapeHTML(c.id)}">${escapeHTML(c.name)}</option>
   `).join('');
 
   if (allSchoolClasses.length > 0) {
@@ -1553,11 +1565,11 @@ async function renderClassSubjectsForm() {
 
     container.innerHTML = subjects.map((s, idx) => `
       <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl border border-slate-200 subject-row">
-        <input type="text" name="sub_name" value="${s.name}" required placeholder="Subject Name"
+        <input type="text" name="sub_name" value="${escapeHTML(s.name)}" required placeholder="Subject Name"
                class="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold outline-none">
-        <input type="number" name="sub_max" value="${s.maxMarks}" min="1" max="1000" required placeholder="Max Marks"
+        <input type="number" name="sub_max" value="${Number(s.maxMarks) || 100}" min="1" max="1000" required placeholder="Max Marks"
                class="w-24 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-center outline-none">
-        <input type="number" name="sub_pass" value="${s.passMarks || Math.round(s.maxMarks * 0.33)}" min="1" required placeholder="Passing"
+        <input type="number" name="sub_pass" value="${Number(s.passMarks) || Math.round((Number(s.maxMarks) || 100) * 0.33)}" min="1" required placeholder="Passing"
                class="w-24 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-center outline-none">
         <button type="button" onclick="window.removeSubjectRow(this)" 
                 class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg">
@@ -1665,19 +1677,19 @@ async function loadParentAccountsList() {
 
     container.innerHTML = parents.map(p => {
       const studentBadges = (p.linkedStudents || []).map(stdId => {
-        return `<span class="px-2 py-0.5 rounded-lg text-xs bg-emerald-50 text-emerald-800 font-bold border border-emerald-100">${stdId}</span>`;
+        return `<span class="px-2 py-0.5 rounded-lg text-xs bg-emerald-50 text-emerald-800 font-bold border border-emerald-100">${escapeHTML(stdId)}</span>`;
       });
 
       return `
         <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div class="font-bold text-slate-900 text-base flex items-center gap-2">
-              ${p.name}
+              ${escapeHTML(p.name)}
               <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-bold">Parent</span>
             </div>
             <div class="text-xs text-slate-500 mt-0.5 font-mono">
-              Login ID: <strong class="text-slate-800">${p.email.replace('@school.local', '')}</strong> (${p.email}) 
-              ${p.phone ? `• 📞 ${p.phone}` : ''} • UID: <span class="bg-slate-100 px-1 py-0.5 rounded text-[10px]">${p.id}</span>
+              Login ID: <strong class="text-slate-800">${escapeHTML((p.email || '').replace('@school.local', ''))}</strong> (${escapeHTML(p.email)}) 
+              ${p.phone ? `• 📞 ${escapeHTML(p.phone)}` : ''} • UID: <span class="bg-slate-100 px-1 py-0.5 rounded text-[10px]">${escapeHTML(p.id)}</span>
             </div>
             <div class="mt-2.5 flex flex-wrap gap-1.5 items-center">
               <span class="text-[10px] font-bold text-slate-400 uppercase">Linked Children:</span>
@@ -1685,7 +1697,8 @@ async function loadParentAccountsList() {
             </div>
           </div>
           <div>
-            <button onclick="window.deleteParentPrompt('${p.id}', '${p.name}')"
+            <button onclick="window.deleteParentPrompt('${escapeHTML(p.id)}', this.dataset.name)"
+                    data-name="${escapeHTML(p.name)}"
                     class="px-3 py-1.5 rounded-xl border border-rose-200 hover:bg-rose-50 text-xs font-semibold text-rose-600 transition">
               Remove Account
             </button>
@@ -1704,7 +1717,7 @@ async function loadParentStudentSelector() {
   if (!classFilter) return;
 
   classFilter.innerHTML = `<option value="">-- All Classes (or Filter by Class) --</option>` + allSchoolClasses.map(c => `
-    <option value="${c.id}">${c.name}</option>
+    <option value="${escapeHTML(c.id)}">${escapeHTML(c.name)}</option>
   `).join('');
 
   await filterStudentsForParentLinking();
@@ -1740,8 +1753,8 @@ async function filterStudentsForParentLinking() {
 
     container.innerHTML = parentSelectorStudents.map(s => `
       <label class="flex items-center gap-2 p-2 bg-slate-50 hover:bg-slate-100 rounded-xl cursor-pointer text-xs font-medium text-slate-700 border border-slate-200">
-        <input type="checkbox" name="linkStudent" value="${s.id}" data-class="${s.classId}" class="rounded text-indigo-600 focus:ring-indigo-500">
-        <span><strong>${s.rollNo}</strong>. ${s.name} <span class="text-[10px] text-slate-400">(${s.classId})</span></span>
+        <input type="checkbox" name="linkStudent" value="${escapeHTML(s.id)}" data-class="${escapeHTML(s.classId)}" class="rounded text-indigo-600 focus:ring-indigo-500">
+        <span><strong>${escapeHTML(s.rollNo)}</strong>. ${escapeHTML(s.name)} <span class="text-[10px] text-slate-400">(${escapeHTML(s.classId)})</span></span>
       </label>
     `).join('');
   } catch (error) {
@@ -1805,11 +1818,12 @@ async function handleAddParent(e) {
 }
 
 window.deleteParentPrompt = async function(parentId, parentName) {
-  if (!confirm(`Are you sure you want to remove the parent account for "${parentName}"?`)) return;
+  const displayName = parentName || 'this parent';
+  if (!confirm(`Are you sure you want to remove the parent account for "${displayName}"?`)) return;
 
   try {
     await deleteDoc(doc(db, 'users', parentId));
-    showToast(`Parent account "${parentName}" removed.`, 'info');
+    showToast(`Parent account "${displayName}" removed.`, 'info');
     await loadParentAccountsList();
   } catch (error) {
     console.error('Error deleting parent:', error);

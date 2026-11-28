@@ -5,7 +5,7 @@
  * Optimized for mobile touchscreens and zero-cost Firestore reads
  */
 
-import { db } from './firebase-config.js';
+import { db } from './firebase-config.js?v=1.0.1';
 import { 
   collection, 
   doc, 
@@ -23,7 +23,8 @@ import {
   createWhatsAppLink, 
   calculateGrade, 
   computeReportCardTotals, 
-  showToast 
+  showToast,
+  escapeHTML 
 } from './utils.js';
 import { writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
@@ -138,7 +139,7 @@ async function initTeacherMarksSection() {
         marksTermSelect.innerHTML = `<option value="">No exam terms created yet</option>`;
       } else {
         marksTermSelect.innerHTML = teacherExamTerms.map(t => `
-          <option value="${t.id}">${t.name} (${t.status === 'published' ? '🔒 Published' : '📝 Draft'})</option>
+          <option value="${escapeHTML(t.id)}">${escapeHTML(t.name)} (${t.status === 'published' ? '🔒 Published' : '📝 Draft'})</option>
         `).join('');
         currentMarksTerm = teacherExamTerms[0];
       }
@@ -147,7 +148,7 @@ async function initTeacherMarksSection() {
     // 2. Populate assigned classes
     if (marksClassSelect && assignedClasses.length > 0) {
       marksClassSelect.innerHTML = assignedClasses.map(c => `
-        <option value="${c.id}">${c.name || `Grade ${c.grade}-${c.section}`}</option>
+        <option value="${escapeHTML(c.id)}">${escapeHTML(c.name || `Grade ${c.grade}-${c.section}`)}</option>
       `).join('');
       currentMarksClass = assignedClasses[0];
     }
@@ -320,8 +321,8 @@ function renderTeacherMarksGrid() {
             <th class="px-4 py-3 border-r border-slate-200 min-w-[140px] sticky left-12 bg-slate-50">Student Name</th>
             ${currentClassSubjects.map(s => `
               <th class="px-3 py-3 border-r border-slate-100 text-center min-w-[90px]">
-                <div>${s.name}</div>
-                <div class="text-[9px] text-slate-400 font-normal">Max: ${s.maxMarks}</div>
+                <div>${escapeHTML(s.name)}</div>
+                <div class="text-[9px] text-slate-400 font-normal">Max: ${Number(s.maxMarks) || 0}</div>
               </th>
             `).join('')}
             <th class="px-3 py-3 border-r border-slate-200 text-center bg-indigo-50/50 text-indigo-900 font-bold min-w-[70px]">Total</th>
@@ -338,37 +339,37 @@ function renderTeacherMarksGrid() {
     const totals = computeReportCardTotals(studentState.subjects);
 
     html += `
-      <tr class="hover:bg-slate-50/50 transition" id="marks-row-${student.id}">
-        <td class="px-3 py-2 text-center font-bold text-slate-700 border-r border-slate-200 sticky left-0 bg-white">${student.rollNo}</td>
-        <td class="px-4 py-2 font-bold text-slate-800 border-r border-slate-200 sticky left-12 bg-white truncate max-w-[140px]">${student.name}</td>
+      <tr class="hover:bg-slate-50/50 transition" id="marks-row-${escapeHTML(student.id)}">
+        <td class="px-3 py-2 text-center font-bold text-slate-700 border-r border-slate-200 sticky left-0 bg-white">${escapeHTML(student.rollNo)}</td>
+        <td class="px-4 py-2 font-bold text-slate-800 border-r border-slate-200 sticky left-12 bg-white truncate max-w-[140px]">${escapeHTML(student.name)}</td>
         ${studentState.subjects.map((sub, sIdx) => `
           <td class="px-2 py-2 border-r border-slate-100 text-center">
             <input type="number" 
                    min="0" 
-                   max="${sub.maxMarks}" 
-                   value="${sub.obtainedMarks}" 
+                   max="${Number(sub.maxMarks) || 100}" 
+                   value="${Number(sub.obtainedMarks) || 0}" 
                    ${isMarksLocked ? 'disabled' : ''}
-                   onchange="window.updateTeacherMark('${student.id}', ${sIdx}, this.value)"
+                   onchange="window.updateTeacherMark('${escapeHTML(student.id)}', ${sIdx}, this.value)"
                    class="w-16 px-2 py-1 text-center font-bold text-slate-900 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-100 outline-none">
           </td>
         `).join('')}
-        <td class="px-3 py-2 text-center font-extrabold text-slate-900 border-r border-slate-200 bg-indigo-50/20" id="total-${student.id}">
+        <td class="px-3 py-2 text-center font-extrabold text-slate-900 border-r border-slate-200 bg-indigo-50/20" id="total-${escapeHTML(student.id)}">
           ${totals.totalObtainedMarks} / ${totals.totalMaxMarks}
         </td>
-        <td class="px-3 py-2 text-center font-bold text-indigo-700 border-r border-slate-200 bg-indigo-50/20" id="percent-${student.id}">
+        <td class="px-3 py-2 text-center font-bold text-indigo-700 border-r border-slate-200 bg-indigo-50/20" id="percent-${escapeHTML(student.id)}">
           ${totals.percentage}%
         </td>
-        <td class="px-3 py-2 text-center font-black border-r border-slate-200 bg-indigo-50/20" id="grade-${student.id}">
+        <td class="px-3 py-2 text-center font-black border-r border-slate-200 bg-indigo-50/20" id="grade-${escapeHTML(student.id)}">
           <span class="px-2 py-0.5 rounded-full text-[10px] ${totals.overallResult === 'PASS' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
-            ${totals.overallGrade}
+            ${escapeHTML(totals.overallGrade)}
           </span>
         </td>
         <td class="px-3 py-2">
           <input type="text" 
-                 value="${studentState.remarks}" 
+                 value="${escapeHTML(studentState.remarks || '')}" 
                  placeholder="e.g. Great progress"
                  ${isMarksLocked ? 'disabled' : ''}
-                 onchange="window.updateTeacherRemarks('${student.id}', this.value)"
+                 onchange="window.updateTeacherRemarks('${escapeHTML(student.id)}', this.value)"
                  class="w-full px-2.5 py-1 text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 outline-none">
         </td>
       </tr>
@@ -519,7 +520,7 @@ async function loadAssignedClasses() {
     // Populate select element
     if (classSelect) {
       classSelect.innerHTML = assignedClasses.map(c => 
-        `<option value="${c.id}">${c.name || `Grade ${c.grade} - Section ${c.section}`}</option>`
+        `<option value="${escapeHTML(c.id)}">${escapeHTML(c.name || `Grade ${c.grade} - Section ${c.section}`)}</option>`
       ).join('');
 
       if (assignedClasses.length > 0) {
@@ -692,17 +693,17 @@ function renderStudentRollCall(selectedDate) {
     const showWhatsApp = (currentStatus === 'A' || currentStatus === 'L');
 
     html += `
-      <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:border-gray-200 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4" id="student-row-${student.id}">
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:border-gray-200 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4" id="student-row-${escapeHTML(student.id)}">
         <!-- Student Info -->
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center font-bold text-gray-700 text-sm flex-shrink-0">
-            ${student.rollNo}
+            ${escapeHTML(student.rollNo)}
           </div>
           <div>
-            <div class="font-bold text-gray-800 text-base leading-tight">${student.name}</div>
+            <div class="font-bold text-gray-800 text-base leading-tight">${escapeHTML(student.name)}</div>
             <div class="text-xs text-gray-400 flex items-center gap-2 mt-0.5">
-              <span>S/O, D/O: ${student.fatherName || '—'}</span>
-              ${student.parentPhone ? `<span>• 📞 ${student.parentPhone}</span>` : ''}
+              <span>S/O, D/O: ${student.fatherName ? escapeHTML(student.fatherName) : '—'}</span>
+              ${student.parentPhone ? `<span>• 📞 ${escapeHTML(student.parentPhone)}</span>` : ''}
             </div>
           </div>
         </div>
@@ -710,9 +711,9 @@ function renderStudentRollCall(selectedDate) {
         <!-- Controls: Status Toggle & WhatsApp Action -->
         <div class="flex flex-wrap items-center gap-2 justify-between md:justify-end">
           <!-- WhatsApp Link Button -->
-          <div id="wa-btn-container-${student.id}" class="${showWhatsApp ? 'inline-block' : 'hidden'}">
+          <div id="wa-btn-container-${escapeHTML(student.id)}" class="${showWhatsApp ? 'inline-block' : 'hidden'}">
             ${waLink ? `
-              <a href="${waLink}" target="_blank" rel="noopener noreferrer" 
+              <a href="${escapeHTML(waLink)}" target="_blank" rel="noopener noreferrer" 
                  title="Send WhatsApp Absence Alert to Parent"
                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold shadow-sm transition active:scale-95">
                 <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
@@ -729,25 +730,25 @@ function renderStudentRollCall(selectedDate) {
           <div class="inline-flex rounded-xl bg-gray-100 p-1 border border-gray-200">
             <button type="button" 
                     ${isReadOnlyMode ? 'disabled' : ''}
-                    onclick="window.toggleAttendance('${student.id}', 'P')"
+                    onclick="window.toggleAttendance('${escapeHTML(student.id)}', 'P')"
                     class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${currentStatus === 'P' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}">
               P
             </button>
             <button type="button" 
                     ${isReadOnlyMode ? 'disabled' : ''}
-                    onclick="window.toggleAttendance('${student.id}', 'A')"
+                    onclick="window.toggleAttendance('${escapeHTML(student.id)}', 'A')"
                     class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${currentStatus === 'A' ? 'bg-rose-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}">
               A
             </button>
             <button type="button" 
                     ${isReadOnlyMode ? 'disabled' : ''}
-                    onclick="window.toggleAttendance('${student.id}', 'L')"
+                    onclick="window.toggleAttendance('${escapeHTML(student.id)}', 'L')"
                     class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${currentStatus === 'L' ? 'bg-amber-500 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}">
               L
             </button>
             <button type="button" 
                     ${isReadOnlyMode ? 'disabled' : ''}
-                    onclick="window.toggleAttendance('${student.id}', 'E')"
+                    onclick="window.toggleAttendance('${escapeHTML(student.id)}', 'E')"
                     class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${currentStatus === 'E' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}">
               E
             </button>
@@ -803,7 +804,7 @@ window.toggleAttendance = function(studentId, newStatus) {
         const waLink = createWhatsAppLink(student.parentPhone, student.name, student.rollNo, newStatus, selectedDate);
         if (waLink) {
           waContainer.innerHTML = `
-            <a href="${waLink}" target="_blank" rel="noopener noreferrer" 
+            <a href="${escapeHTML(waLink)}" target="_blank" rel="noopener noreferrer" 
                title="Send WhatsApp Absence Alert to Parent"
                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold shadow-sm transition active:scale-95">
               <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.288.043.088.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.861.174.086.275.072.376-.044.101-.116.433-.506.549-.68.116-.173.231-.144.39-.086s1.011.477 1.184.564.289.13.332.203c.044.071.044.418-.1.823z"/></svg>
