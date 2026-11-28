@@ -834,11 +834,18 @@
                 </select>
               </div>
             </div>
-            <button id="btn-print-parent-report" type="button"
-                    class="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-sm transition inline-flex items-center gap-2">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-              <span data-i18n="btn_print_report">Print / Save PDF Report Card</span>
-            </button>
+            <div class="flex flex-wrap items-center gap-2">
+              <button id="btn-share-parent-report-wa" type="button" disabled
+                      class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold shadow-sm transition inline-flex items-center gap-2 active:scale-95">
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.288.043.088.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.861.174.086.275.072.376-.044.101-.116.433-.506.549-.68.116-.173.231-.144.39-.086s1.011.477 1.184.564.289.13.332.203c.044.071.044.418-.1.823z"/></svg>
+                <span data-i18n="btn_share_whatsapp">Share on WhatsApp</span>
+              </button>
+              <button id="btn-print-parent-report" type="button"
+                      class="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-sm transition inline-flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                <span data-i18n="btn_print_report">Print / Save PDF Report Card</span>
+              </button>
+            </div>
           </div>
 
           <!-- Report Card Render Container -->
@@ -1058,6 +1065,8 @@
           parent_stat_late: 'Late (L)',
           lbl_parent_exam_session: 'Examination Session',
           btn_print_report: 'Print / Save PDF Report Card',
+          btn_share_whatsapp: 'Share on WhatsApp',
+          btn_whatsapp: 'WhatsApp',
 
           modal_attendance_title: 'Class Attendance Override',
           modal_attendance_sub: 'Administrator Master Edit'
@@ -1227,6 +1236,8 @@
           parent_stat_late: 'دیر سے (L)',
           lbl_parent_exam_session: 'امتحانی سیشن',
           btn_print_report: 'پرنٹ / پی ڈی ایف رپورٹ کارڈ محفوظ کریں',
+          btn_share_whatsapp: 'واٹس ایپ پر شیئر کریں',
+          btn_whatsapp: 'واٹس ایپ',
 
           modal_attendance_title: 'کلاس حاضری میں ترمیم',
           modal_attendance_sub: 'ایڈمنسٹریٹر ماسٹر ایڈیٹ'
@@ -1235,6 +1246,8 @@
 
       // 2. Dynamic phrases dictionary for content rendered via JS
       const DYNAMIC_DICT = {
+        'Share on WhatsApp': 'واٹس ایپ پر شیئر کریں',
+        'WhatsApp': 'واٹس ایپ',
         'Review / Edit Attendance': 'حاضری دیکھیں / ترمیم کریں',
         'Mark Attendance (Admin Override)': 'حاضری لگائیں (ایڈمن)',
         'Mark Attendance': 'حاضری لگائیں',
@@ -1464,11 +1477,11 @@
        APPLICATION SCRIPT ENTRY POINT
        ===================================================================== -->
   <script type="module">
-    import { initAuth } from './js/auth.js?v=1.0.1';
-    import { initTeacherPortal } from './js/teacher.js?v=1.0.1';
-    import { initAdminPortal } from './js/admin.js?v=1.0.1';
-    import { initParentPortal } from './js/parent.js?v=1.0.1';
-    import { initNetworkMonitor } from './js/firebase-config.js?v=1.0.1';
+    import { initAuth } from './js/auth.js?v=1.0.2';
+    import { initTeacherPortal } from './js/teacher.js?v=1.0.2';
+    import { initAdminPortal } from './js/admin.js?v=1.0.2';
+    import { initParentPortal } from './js/parent.js?v=1.0.2';
+    import { initNetworkMonitor } from './js/firebase-config.js?v=1.0.2';
 
     document.addEventListener('DOMContentLoaded', () => {
       // 1. Initialize Network Monitor
