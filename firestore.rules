@@ -7,26 +7,30 @@ rules_version = '2';
 // Collection: users
 // Document ID: {userId} (Firebase Auth UID or sanitized email identifier)
 // Fields:
+//   - id: string (optional, 1-128 chars)
 //   - uid: string (optional, 1-128 chars, immutable)
 //   - email: string (required, valid email format, max 100 chars)
 //   - name: string (required, 1-100 chars)
 //   - role: string (required, enum: 'admin' | 'teacher' | 'parent')
+//   - status: string (optional, enum: 'active' | 'inactive')
 //   - assignedClassIds: list (optional, max 50 strings, classes assigned to teacher)
 //   - linkedStudents: list (optional, max 20 strings, student IDs linked to parent)
 //   - linkedClasses: list (optional, max 20 strings, class IDs linked to parent)
 //   - phone: string (optional, max 30 chars)
-//   - createdAt: timestamp | string (optional/created, max 50 chars, immutable)
+//   - createdAt: timestamp | string (optional/created, max 50 chars)
 //   - updatedAt: timestamp | string (optional, max 50 chars)
 //
 // Collection: classes
 // Document ID: {classId} (e.g., class_10_a)
 // Fields:
+//   - id: string (optional, 1-50 chars)
+//   - classId: string (optional, 1-50 chars)
 //   - name: string (required, 1-100 chars, e.g. "Grade 10 - Section A")
 //   - grade: string (required, 1-20 chars, e.g. "10", "KG")
 //   - section: string (required, 1-20 chars, e.g. "A", "B")
-//   - academicYear: string (required, 1-20 chars, e.g. "2026-2027")
-//   - studentCount: int (required, >= 0 and <= 1000)
-//   - createdAt: timestamp | string (optional/created, max 50 chars, immutable)
+//   - academicYear: string (optional, 1-20 chars, e.g. "2026-2027")
+//   - studentCount: int | float (optional, >= 0 and <= 1000)
+//   - createdAt: timestamp | string (optional/created, max 50 chars)
 //   - updatedAt: timestamp | string (optional, max 50 chars)
 //
 // Collection: students
@@ -111,9 +115,12 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Check if user owns the document path based on auth UID
+    // Check if user owns the document path based on auth UID or email
     function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+      return isAuthenticated() && (
+        request.auth.uid == userId ||
+        (request.auth.token.get('email', '') != '' && request.auth.token.email == userId)
+      );
     }
 
     // Check if a document exists in the users collection
@@ -137,28 +144,38 @@ service cloud.firestore {
     }
 
     // Verify whether the caller is a verified Administrator
-    // Supports custom auth claims as well as Firestore profile lookup
+    // Supports custom auth claims, email fallback, as well as Firestore profile lookup by UID or email
     function isAdmin() {
       return isAuthenticated() && (
         request.auth.token.get('admin', false) == true ||
-        request.auth.token.get('role', '') == 'admin' ||
-        (currentUserExists() && getCurrentUserData().get('role', '') == 'admin')
+        request.auth.token.get('role', '').lower() == 'admin' ||
+        request.auth.token.get('email', '').lower() == 'admin@countryschool.edu' ||
+        (currentUserExists() && getCurrentUserData().get('role', '').lower() == 'admin') ||
+        (request.auth.token.get('email', '') != '' &&
+         userDocExists(request.auth.token.email) &&
+         getUserData(request.auth.token.email).get('role', '').lower() == 'admin')
       );
     }
 
     // Verify whether the caller is an active Teacher
     function isTeacher() {
       return isAuthenticated() && (
-        request.auth.token.get('role', '') == 'teacher' ||
-        (currentUserExists() && getCurrentUserData().get('role', '') == 'teacher')
+        request.auth.token.get('role', '').lower() == 'teacher' ||
+        (currentUserExists() && getCurrentUserData().get('role', '').lower() == 'teacher') ||
+        (request.auth.token.get('email', '') != '' &&
+         userDocExists(request.auth.token.email) &&
+         getUserData(request.auth.token.email).get('role', '').lower() == 'teacher')
       );
     }
 
     // Verify whether the caller is a registered Parent
     function isParent() {
       return isAuthenticated() && (
-        request.auth.token.get('role', '') == 'parent' ||
-        (currentUserExists() && getCurrentUserData().get('role', '') == 'parent')
+        request.auth.token.get('role', '').lower() == 'parent' ||
+        (currentUserExists() && getCurrentUserData().get('role', '').lower() == 'parent') ||
+        (request.auth.token.get('email', '') != '' &&
+         userDocExists(request.auth.token.email) &&
+         getUserData(request.auth.token.email).get('role', '').lower() == 'parent')
       );
     }
 
@@ -226,7 +243,7 @@ service cloud.firestore {
       return email is string &&
              email.size() >= 3 &&
              email.size() <= 100 &&
-             email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+             email.matches('^[^@\\s]+@[^@\\s]+$');
     }
 
     // Validate optional timestamp or ISO date string field
@@ -243,28 +260,32 @@ service cloud.firestore {
     // Domain validator for users/{userId}
     function isValidUser(data) {
       return hasRequiredFields(['email', 'name', 'role']) &&
-             hasOnlyAllowedFields(['uid', 'email', 'name', 'role', 'assignedClassIds', 'linkedStudents', 'linkedClasses', 'phone', 'createdAt', 'updatedAt']) &&
+             hasOnlyAllowedFields(['id', 'uid', 'email', 'name', 'role', 'status', 'assignedClassIds', 'linkedStudents', 'linkedClasses', 'phone', 'createdAt', 'updatedAt']) &&
              isValidEmail(data.email) &&
              data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
              data.role is string && (data.role == 'admin' || data.role == 'teacher' || data.role == 'parent') &&
+             (!('status' in data) || (data.status is string && (data.status == 'active' || data.status == 'inactive'))) &&
              (!('assignedClassIds' in data) || (data.assignedClassIds is list && data.assignedClassIds.size() <= 50)) &&
              (!('linkedStudents' in data) || (data.linkedStudents is list && data.linkedStudents.size() <= 20)) &&
              (!('linkedClasses' in data) || (data.linkedClasses is list && data.linkedClasses.size() <= 20)) &&
              (!('phone' in data) || (data.phone is string && data.phone.size() <= 30)) &&
              (!('uid' in data) || (data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128)) &&
+             (!('id' in data) || (data.id is string && data.id.size() >= 1 && data.id.size() <= 128)) &&
              isValidTimestampOrString('createdAt') &&
              isValidTimestampOrString('updatedAt');
     }
 
     // Domain validator for classes/{classId}
     function isValidClass(data) {
-      return hasRequiredFields(['name', 'grade', 'section', 'academicYear', 'studentCount']) &&
-             hasOnlyAllowedFields(['name', 'grade', 'section', 'academicYear', 'studentCount', 'createdAt', 'updatedAt']) &&
+      return hasRequiredFields(['name', 'grade', 'section']) &&
+             hasOnlyAllowedFields(['id', 'classId', 'name', 'grade', 'section', 'academicYear', 'studentCount', 'createdAt', 'updatedAt']) &&
              data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
              data.grade is string && data.grade.size() >= 1 && data.grade.size() <= 20 &&
              data.section is string && data.section.size() >= 1 && data.section.size() <= 20 &&
-             data.academicYear is string && data.academicYear.size() >= 1 && data.academicYear.size() <= 20 &&
-             data.studentCount is int && data.studentCount >= 0 && data.studentCount <= 1000 &&
+             (!('academicYear' in data) || (data.academicYear is string && data.academicYear.size() <= 20)) &&
+             (!('studentCount' in data) || ((data.studentCount is int || data.studentCount is float) && data.studentCount >= 0 && data.studentCount <= 1000)) &&
+             (!('id' in data) || (data.id is string && data.id.size() <= 50)) &&
+             (!('classId' in data) || (data.classId is string && data.classId.size() <= 50)) &&
              isValidTimestampOrString('createdAt') &&
              isValidTimestampOrString('updatedAt');
     }
@@ -392,11 +413,11 @@ service cloud.firestore {
 
       // Only administrators can update user profiles.
       // Strictly prevents role self-escalation, self-linking of other students, or unauthorized class reassignment.
-      // Protects 'createdAt' and 'uid' from post-creation tampering.
+      // Protects 'uid' from mutation while allowing setDoc(..., { merge: true }) with serverTimestamp()
       allow update: if isAuthenticated() &&
                     isAdmin() &&
                     isValidUser(request.resource.data) &&
-                    areImmutableFieldsUnchanged(['createdAt', 'uid']);
+                    (!('uid' in resource.data) || request.resource.data.uid == resource.data.uid);
 
       // Only administrators can delete user accounts.
       allow delete: if isAuthenticated() && isAdmin();
@@ -415,11 +436,10 @@ service cloud.firestore {
                     isValidClass(request.resource.data);
 
       // Only administrators can update classes (e.g. updating studentCount or details).
-      // Protects 'createdAt' from modification.
+      // Validates data integrity while allowing setDoc(..., { merge: true }) with serverTimestamp()
       allow update: if isAuthenticated() &&
                     isAdmin() &&
-                    isValidClass(request.resource.data) &&
-                    areImmutableFieldsUnchanged(['createdAt']);
+                    isValidClass(request.resource.data);
 
       // Only administrators can delete classes.
       allow delete: if isAuthenticated() && isAdmin();
